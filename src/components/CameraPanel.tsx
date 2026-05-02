@@ -1,5 +1,6 @@
 // CameraPanel.tsx — Live camera stream panel with crosshair overlay
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { wsUrl } from '../hooks/useWebSocket';
 
 export interface CameraPanelProps {
   title: string;
@@ -9,8 +10,8 @@ export interface CameraPanelProps {
   coords?: string;
   fps?: number;
   width?: number;
-  /** Optional real camera image to display instead of SVG simulation */
-  imageSrc?: string;
+  /** WebSocket path for MJPG binary frames (e.g. "/ws/camera/handineye") */
+  streamUrl?: string;
   onClickFeed?: (pos: { x: string; y: string }) => void;
 }
 
@@ -21,9 +22,46 @@ interface ClickPos {
   py: number;
 }
 
-export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, imageSrc, onClickFeed }: CameraPanelProps) {
+export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, streamUrl, onClickFeed }: CameraPanelProps) {
   const [hovered, setHovered] = useState(false);
   const [clickPos, setClickPos] = useState<ClickPos | null>(null);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const prevUrlRef = useRef<string | null>(null);
+
+  const connectStream = useCallback(() => {
+    if (!streamUrl || !isLive || !isActive) return;
+
+    const ws = new WebSocket(wsUrl(streamUrl));
+    ws.binaryType = 'arraybuffer';
+    ws.onmessage = (e: MessageEvent) => {
+      if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current);
+      const blob = new Blob([e.data], { type: 'image/jpeg' });
+      const url = URL.createObjectURL(blob);
+      prevUrlRef.current = url;
+      setImgUrl(url);
+    };
+    wsRef.current = ws;
+  }, [streamUrl, isLive, isActive]);
+
+  useEffect(() => {
+    connectStream();
+    return () => {
+      wsRef.current?.close();
+      wsRef.current = null;
+      if (prevUrlRef.current) {
+        URL.revokeObjectURL(prevUrlRef.current);
+        prevUrlRef.current = null;
+      }
+    };
+  }, [connectStream]);
+
+  // Reset image when stream disconnects
+  useEffect(() => {
+    if (!isLive || !isActive) {
+      setImgUrl(null);
+    }
+  }, [isLive, isActive]);
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -32,6 +70,8 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
     setClickPos({ x, y, px: e.clientX - rect.left, py: e.clientY - rect.top });
     onClickFeed?.({ x, y });
   }
+
+  const hasFeed = isLive && imgUrl;
 
   return (
     <div className="ds-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -45,15 +85,17 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
           <span className="ds-card-label">{title}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {fps != null && (
+          {fps != null && hasFeed && (
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>
               {fps} fps
             </span>
           )}
           {isLive ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span className="status-dot live" />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-green)' }}>LIVE</span>
+              <span className={`status-dot ${hasFeed ? 'live' : 'idle'}`} />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: hasFeed ? 'var(--color-green)' : 'var(--color-text-disabled)' }}>
+                {hasFeed ? 'LIVE' : 'WAITING'}
+              </span>
             </div>
           ) : (
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>OFFLINE</span>
@@ -65,15 +107,15 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
       <div
         style={{
           flex: 1, background: '#000', position: 'relative',
-          cursor: isLive ? 'crosshair' : 'default',
-          boxShadow: isActive && isLive ? 'inset 0 0 0 1px oklch(75% 0.18 200 / 0.4)' : 'none',
+          cursor: hasFeed ? 'crosshair' : 'default',
+          boxShadow: hasFeed ? 'inset 0 0 0 1px oklch(75% 0.18 200 / 0.4)' : 'none',
           minHeight: 0, overflow: 'hidden',
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onClick={isLive ? handleClick : undefined}
+        onClick={hasFeed ? handleClick : undefined}
       >
-        {/* Background / simulated feed */}
+        {/* Background */}
         <div style={{
           position: 'absolute', inset: 0,
           background: isLive
@@ -95,17 +137,17 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               </div>
             </div>
           )}
-          {isLive && !imageSrc && (
+          {isLive && !hasFeed && (
             <div style={{ opacity: 0.15, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)' }}>
               {topic}
             </div>
           )}
         </div>
 
-        {/* Real camera image feed */}
-        {isLive && imageSrc && (
+        {/* Live camera image from WebSocket */}
+        {hasFeed && (
           <img
-            src={imageSrc}
+            src={imgUrl}
             alt={title}
             style={{
               position: 'absolute', inset: 0,
@@ -116,29 +158,8 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
           />
         )}
 
-        {/* Simulated scene SVG overlay (only when no real image) */}
-        {isLive && !imageSrc && (
-          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-            viewBox="0 0 320 240" preserveAspectRatio="xMidYMid slice">
-            <g stroke="oklch(75% 0.18 200 / 0.06)" strokeWidth="0.5" fill="none">
-              {[80, 160, 240].map(x => <line key={x} x1={x} y1="0" x2={x} y2="240"/>)}
-              {[60, 120, 180].map(y => <line key={y} x1="0" y1={y} x2="320" y2={y}/>)}
-            </g>
-            <circle cx="160" cy="140" r="60"
-              stroke="oklch(75% 0.18 200 / 0.12)" strokeWidth="1" fill="none" strokeDasharray="4 3"/>
-            <g fill="oklch(72% 0.18 55 / 0.25)" stroke="oklch(72% 0.18 55 / 0.5)" strokeWidth="0.8">
-              <rect x="132" y="160" width="14" height="20" rx="1"/>
-              <rect x="153" y="160" width="14" height="20" rx="1"/>
-              <rect x="174" y="160" width="14" height="20" rx="1"/>
-              <rect x="143" y="140" width="14" height="20" rx="1"/>
-              <rect x="163" y="140" width="14" height="20" rx="1"/>
-              <rect x="153" y="120" width="14" height="20" rx="1"/>
-            </g>
-          </svg>
-        )}
-
-        {/* HUD overlay on real image */}
-        {isLive && imageSrc && (
+        {/* HUD overlay */}
+        {hasFeed && (
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
             viewBox="0 0 320 240" preserveAspectRatio="xMidYMid slice">
             <g stroke="oklch(75% 0.18 200 / 0.25)" strokeWidth="0.5" fill="none">
@@ -153,7 +174,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         )}
 
         {/* Click crosshair */}
-        {clickPos && isLive && (
+        {clickPos && hasFeed && (
           <div style={{
             position: 'absolute',
             left: clickPos.px - 8, top: clickPos.py - 8,
@@ -165,7 +186,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         )}
 
         {/* Coordinate overlay */}
-        {coords && isLive && (
+        {coords && hasFeed && (
           <div style={{
             position: 'absolute', bottom: 8, left: 8,
             fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-cyan)',
@@ -176,7 +197,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         )}
 
         {/* Click hint */}
-        {isLive && hovered && !clickPos && (
+        {hasFeed && hovered && !clickPos && (
           <div style={{
             position: 'absolute', top: 8, right: 8,
             fontFamily: 'var(--font-mono)', fontSize: 9,
@@ -188,7 +209,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         )}
 
         {/* Clicked coordinate readout */}
-        {clickPos && isLive && (
+        {clickPos && hasFeed && (
           <div style={{
             position: 'absolute', bottom: 8, right: 8,
             fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-cyan)',
@@ -206,9 +227,9 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         flexShrink: 0,
       }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>
-          {isLive ? `${width ?? 640}×480` : '—'}
+          {hasFeed ? `${width ?? 640}×480` : '—'}
         </span>
-        {clickPos && isLive && (
+        {clickPos && hasFeed && (
           <button className="ds-btn ghost sm" onClick={() => setClickPos(null)}>Clear</button>
         )}
       </div>
