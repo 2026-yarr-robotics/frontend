@@ -9,6 +9,8 @@ export interface CameraPanelProps {
   coords?: string;
   fps?: number;
   width?: number;
+  /** Optional real camera image to display instead of SVG simulation */
+  imageSrc?: string;
   onClickFeed?: (pos: { x: string; y: string }) => void;
 }
 
@@ -19,7 +21,7 @@ interface ClickPos {
   py: number;
 }
 
-export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, onClickFeed }: CameraPanelProps) {
+export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, imageSrc, onClickFeed }: CameraPanelProps) {
   const [hovered, setHovered] = useState(false);
   const [clickPos, setClickPos] = useState<ClickPos | null>(null);
 
@@ -93,15 +95,29 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               </div>
             </div>
           )}
-          {isLive && (
+          {isLive && !imageSrc && (
             <div style={{ opacity: 0.15, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)' }}>
               {topic}
             </div>
           )}
         </div>
 
-        {/* Simulated scene SVG */}
-        {isLive && (
+        {/* Real camera image feed */}
+        {isLive && imageSrc && (
+          <img
+            src={imageSrc}
+            alt={title}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'cover',
+              opacity: 0.92,
+            }}
+          />
+        )}
+
+        {/* Simulated scene SVG overlay (only when no real image) */}
+        {isLive && !imageSrc && (
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
             viewBox="0 0 320 240" preserveAspectRatio="xMidYMid slice">
             <g stroke="oklch(75% 0.18 200 / 0.06)" strokeWidth="0.5" fill="none">
@@ -118,6 +134,21 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               <rect x="163" y="140" width="14" height="20" rx="1"/>
               <rect x="153" y="120" width="14" height="20" rx="1"/>
             </g>
+          </svg>
+        )}
+
+        {/* HUD overlay on real image */}
+        {isLive && imageSrc && (
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+            viewBox="0 0 320 240" preserveAspectRatio="xMidYMid slice">
+            <g stroke="oklch(75% 0.18 200 / 0.25)" strokeWidth="0.5" fill="none">
+              {[80, 160, 240].map(x => <line key={x} x1={x} y1="0" x2={x} y2="240"/>)}
+              {[60, 120, 180].map(y => <line key={y} x1="0" y1={y} x2="320" y2={y}/>)}
+            </g>
+            <circle cx="160" cy="155" r="40"
+              stroke="oklch(75% 0.18 200 / 0.5)" strokeWidth="1" fill="none" strokeDasharray="4 3"/>
+            <line x1="155" y1="155" x2="165" y2="155" stroke="oklch(75% 0.18 200 / 0.8)" strokeWidth="1"/>
+            <line x1="160" y1="150" x2="160" y2="160" stroke="oklch(75% 0.18 200 / 0.8)" strokeWidth="1"/>
           </svg>
         )}
 
