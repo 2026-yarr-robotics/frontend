@@ -266,7 +266,7 @@ export default function App() {
             isLive={rosConnected}
             fps={rosConnected ? 30 : undefined}
             width={640}
-            imageSrc="/eye_to_hand.png"
+            imageSrc="/eye-to-hand.png"
             onClickFeed={handleCameraClick}
           />
           <CameraPanel
@@ -276,6 +276,7 @@ export default function App() {
             isLive={rosConnected}
             fps={rosConnected ? 30 : undefined}
             width={640}
+            imageSrc="/eye-in-hand.png"
             onClickFeed={handleCameraClick}
           />
         </div>
