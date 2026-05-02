@@ -29,6 +29,7 @@ function now(): string {
 
 const DEFAULT_JOINTS = [0, -30, 90, 0, 90, 0];
 const BRINGUP_TASK = 'bringup_real';
+type SelectMode = null | 'stack' | 'unstack';
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -42,6 +43,7 @@ export default function App() {
   const [bringupActive, setBringupActive] = useState(false);
   const [robotIp] = useState('192.168.1.100');
   const [wsConnected, setWsConnected] = useState(false);
+  const [selectMode, setSelectMode] = useState<SelectMode>(null);
   const totalCycles = 6;
 
   function addLog(level: LogLevel, msg: string) {
@@ -102,6 +104,56 @@ export default function App() {
     }
   }
 
+  // ── Enter target selection mode ──
+  function requestStack() {
+    if (!wsConnected || !bringupActive) {
+      addLog('WARN', 'Bringup must be active to use camera-guided tasks');
+      return;
+    }
+    setSelectMode('stack');
+    addLog('INFO', 'Click the nested cup stack on the Eye-in-Hand camera');
+  }
+
+  function requestUnstack() {
+    if (!wsConnected || !bringupActive) {
+      addLog('WARN', 'Bringup must be active to use camera-guided tasks');
+      return;
+    }
+    setSelectMode('unstack');
+    addLog('INFO', 'Click the pyramid center on the Eye-in-Hand camera');
+  }
+
+  // ── Camera click → launch web task with pixel coords ──
+  async function handleCameraClick({ px, py }: { px: number; py: number }) {
+    if (selectMode === 'stack') {
+      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_pyramid_web…`);
+      setSelectMode(null);
+      setTaskStatus('planning');
+      setCycleIdx(0);
+      try {
+        await startTask('cup_pyramid_web', { pixel_x: String(px), pixel_y: String(py) });
+      } catch (e) {
+        addLog('ERR', (e as Error).message);
+        setTaskStatus('idle');
+      }
+      return;
+    }
+    if (selectMode === 'unstack') {
+      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_unstack_web…`);
+      setSelectMode(null);
+      setTaskStatus('planning');
+      setCycleIdx(0);
+      try {
+        await startTask('cup_unstack_web', { pixel_x: String(px), pixel_y: String(py) });
+      } catch (e) {
+        addLog('ERR', (e as Error).message);
+        setTaskStatus('idle');
+      }
+      return;
+    }
+    addLog('INFO', `Pixel: (${px}, ${py})`);
+  }
+
   // ── Command handler ──
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
@@ -109,8 +161,10 @@ export default function App() {
     try {
       if (/stop/i.test(cmd)) {
         addLog('WARN', 'Sending stop…');
-        await stopTask('cup_pyramid');
+        await stopTask('cup_pyramid_web');
+        await stopTask('cup_unstack_web');
         setTaskStatus('idle');
+        setSelectMode(null);
         return;
       }
       if (/home/i.test(cmd)) {
@@ -118,37 +172,30 @@ export default function App() {
         return;
       }
       if (/stack/i.test(cmd)) {
-        addLog('INFO', 'Starting cup_pyramid task…');
-        setTaskStatus('planning');
-        setCycleIdx(0);
-        await startTask('cup_pyramid');
+        requestStack();
         return;
       }
       if (/unstack/i.test(cmd)) {
-        addLog('INFO', 'Starting cup_unstack task…');
-        setTaskStatus('planning');
-        setCycleIdx(0);
-        await startTask('cup_unstack');
+        requestUnstack();
         return;
       }
       addLog('WARN', `Unknown command: "${cmd}"`);
     } catch (e) {
       addLog('ERR', (e as Error).message);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wsConnected, bringupActive]);
 
   function handleAbort() {
-    stopTask('cup_pyramid').catch(() => {});
-    stopTask('cup_unstack').catch(() => {});
+    stopTask('cup_pyramid_web').catch(() => {});
+    stopTask('cup_unstack_web').catch(() => {});
     setTaskStatus('error');
+    setSelectMode(null);
     addLog('ERR', 'Task aborted by operator');
   }
 
-  function handleCameraClick({ x, y }: { x: string; y: string }) {
-    addLog('INFO', `Target selected: (${x}%, ${y}%)`);
-  }
-
   const isRunning = taskStatus === 'planning' || taskStatus === 'executing';
+  const cameraActive = wsConnected && bringupActive;
 
   return (
     <div className="dashboard-layout">
@@ -219,20 +266,20 @@ export default function App() {
 
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
-                  className="ds-btn primary"
+                  className={`ds-btn ${selectMode === 'stack' ? 'danger' : 'primary'}`}
                   style={{ flex: 1, justifyContent: 'center' }}
                   disabled={!wsConnected || isRunning}
-                  onClick={() => handleCommand('Stack cups into pyramid')}
+                  onClick={selectMode === 'stack' ? () => setSelectMode(null) : requestStack}
                 >
-                  Stack
+                  {selectMode === 'stack' ? 'Cancel' : 'Stack'}
                 </button>
                 <button
-                  className="ds-btn secondary"
+                  className={`ds-btn ${selectMode === 'unstack' ? 'danger' : 'secondary'}`}
                   style={{ flex: 1, justifyContent: 'center' }}
                   disabled={!wsConnected || isRunning}
-                  onClick={() => handleCommand('Unstack pyramid')}
+                  onClick={selectMode === 'unstack' ? () => setSelectMode(null) : requestUnstack}
                 >
-                  Unstack
+                  {selectMode === 'unstack' ? 'Cancel' : 'Unstack'}
                 </button>
               </div>
               <button
@@ -254,18 +301,35 @@ export default function App() {
         <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
           <CameraPanel
             title="Eye-to-Hand"
-            topic="/camera/eye_to_hand/image_raw"
-            isActive={false}
+            topic="/fixed_camera/color/image_raw/compressed"
+            isActive={wsConnected}
             isLive={wsConnected}
+            streamUrl="/ws/camera/handtoeye"
           />
           <CameraPanel
             title="Eye-in-Hand"
             topic="/camera/eye_in_hand/image_raw"
-            isActive
-            isLive={wsConnected && bringupActive}
+            isActive={cameraActive}
+            isLive={cameraActive}
             streamUrl="/ws/camera/handineye"
             onClickFeed={handleCameraClick}
           />
+          {/* Selection mode overlay indicator */}
+          {selectMode && (
+            <div style={{
+              position: 'absolute', top: 60, left: '50%', transform: 'translateX(-50%)',
+              padding: '6px 16px', borderRadius: 20,
+              background: selectMode === 'stack'
+                ? 'oklch(68% 0.18 145 / 0.9)'
+                : 'oklch(72% 0.18 55 / 0.9)',
+              fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, color: '#fff',
+              zIndex: 10, pointerEvents: 'none',
+            }}>
+              {selectMode === 'stack'
+                ? 'Click nested cup stack on camera'
+                : 'Click pyramid center on camera'}
+            </div>
+          )}
         </div>
 
         {/* Bottom row */}

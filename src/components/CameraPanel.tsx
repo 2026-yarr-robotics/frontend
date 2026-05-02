@@ -12,14 +12,15 @@ export interface CameraPanelProps {
   width?: number;
   /** WebSocket path for MJPG binary frames (e.g. "/ws/camera/handineye") */
   streamUrl?: string;
-  onClickFeed?: (pos: { x: string; y: string }) => void;
+  /** Called with actual pixel coordinates in the camera image */
+  onClickFeed?: (pos: { px: number; py: number }) => void;
 }
 
 interface ClickPos {
-  x: string;
-  y: string;
   px: number;
   py: number;
+  displayX: number;
+  displayY: number;
 }
 
 export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, streamUrl, onClickFeed }: CameraPanelProps) {
@@ -28,9 +29,12 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const prevUrlRef = useRef<string | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   const connectStream = useCallback(() => {
-    if (!streamUrl || !isLive || !isActive) return;
+    if (!mountedRef.current || !streamUrl || !isLive || !isActive) return;
 
     const ws = new WebSocket(wsUrl(streamUrl));
     ws.binaryType = 'arraybuffer';
@@ -41,12 +45,22 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
       prevUrlRef.current = url;
       setImgUrl(url);
     };
+    ws.onclose = () => {
+      wsRef.current = null;
+      if (mountedRef.current && isLive && isActive) {
+        reconnectTimerRef.current = setTimeout(connectStream, 2000);
+      }
+    };
+    ws.onerror = () => ws.close();
     wsRef.current = ws;
   }, [streamUrl, isLive, isActive]);
 
   useEffect(() => {
+    mountedRef.current = true;
     connectStream();
     return () => {
+      mountedRef.current = false;
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
       wsRef.current = null;
       if (prevUrlRef.current) {
@@ -65,10 +79,15 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
-    const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-    setClickPos({ x, y, px: e.clientX - rect.left, py: e.clientY - rect.top });
-    onClickFeed?.({ x, y });
+    const displayX = e.clientX - rect.left;
+    const displayY = e.clientY - rect.top;
+    // Convert display coordinates to actual camera pixel coordinates
+    const scaleX = imgRef.current ? imgRef.current.naturalWidth / rect.width : 1;
+    const scaleY = imgRef.current ? imgRef.current.naturalHeight / rect.height : 1;
+    const px = Math.round(displayX * scaleX);
+    const py = Math.round(displayY * scaleY);
+    setClickPos({ px, py, displayX, displayY });
+    onClickFeed?.({ px, py });
   }
 
   const hasFeed = isLive && imgUrl;
@@ -147,6 +166,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         {/* Live camera image from WebSocket */}
         {hasFeed && (
           <img
+            ref={imgRef}
             src={imgUrl}
             alt={title}
             style={{
@@ -177,7 +197,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         {clickPos && hasFeed && (
           <div style={{
             position: 'absolute',
-            left: clickPos.px - 8, top: clickPos.py - 8,
+            left: clickPos.displayX - 8, top: clickPos.displayY - 8,
             width: 16, height: 16, pointerEvents: 'none',
           }}>
             <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '100%', background: 'var(--color-cyan)', transform: 'translateX(-50%)' }}/>
@@ -215,7 +235,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
             fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-cyan)',
             background: 'rgba(13,15,20,0.75)', padding: '2px 6px', borderRadius: 3,
           }}>
-            ({clickPos.x}%, {clickPos.y}%)
+            ({clickPos.px}, {clickPos.py})
           </div>
         )}
       </div>
