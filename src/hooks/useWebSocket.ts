@@ -5,6 +5,11 @@ type MessageHandler = (data: MessageEvent) => void;
 const RECONNECT_DELAY_MS = 2000;
 
 export function wsUrl(path: string): string {
+  const base = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (base) {
+    const wsBase = base.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
+    return `${wsBase}${path}`;
+  }
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${proto}//${window.location.host}${path}`;
 }
