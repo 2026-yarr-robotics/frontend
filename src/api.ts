@@ -1,4 +1,4 @@
-const BASE = window.location.origin;
+const BASE = import.meta.env.VITE_API_BASE_URL ?? window.location.origin;
 
 async function post<T = unknown>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
