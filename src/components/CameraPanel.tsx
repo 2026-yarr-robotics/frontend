@@ -109,7 +109,12 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               {fps} fps
             </span>
           )}
-          {isLive ? (
+          {!isActive ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="status-dot error" />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-red)' }}>DISCONNECTED</span>
+            </div>
+          ) : isLive ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span className={`status-dot ${hasFeed ? 'live' : 'idle'}`} />
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: hasFeed ? 'var(--color-green)' : 'var(--color-text-disabled)' }}>
@@ -117,7 +122,10 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               </span>
             </div>
           ) : (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>OFFLINE</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="status-dot error" />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-red)' }}>DISCONNECTED</span>
+            </div>
           )}
         </div>
       </div>
@@ -137,26 +145,33 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         {/* Background */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: isLive
+          background: (isLive && isActive)
             ? 'radial-gradient(ellipse at 40% 50%, #0a1020 0%, #050810 70%)'
             : '#060810',
-          opacity: isLive ? 1 : 0.4,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          {!isLive && (
-            <div style={{ textAlign: 'center', opacity: 0.3 }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
-                stroke="var(--color-text-tertiary)" strokeWidth="1.5" strokeLinecap="round">
+          {(!isActive || !isLive) && (
+            <div style={{ textAlign: 'center' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+                stroke="var(--color-red)" strokeWidth="1.5" strokeLinecap="round"
+                style={{ opacity: 0.6 }}>
                 <path d="M23 7l-7 5 7 5V7z"/>
                 <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
                 <line x1="1" y1="1" x2="23" y2="23"/>
               </svg>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 6 }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
+                color: 'var(--color-red)', marginTop: 8, letterSpacing: '0.08em',
+                opacity: 0.8,
+              }}>
+                NO SIGNAL
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)', marginTop: 4, opacity: 0.5 }}>
                 {topic}
               </div>
             </div>
           )}
-          {isLive && !hasFeed && (
+          {isActive && isLive && !hasFeed && (
             <div style={{ opacity: 0.15, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)' }}>
               {topic}
             </div>

@@ -245,6 +245,7 @@ export default function App() {
                 taskStatus={taskStatus}
                 cycleIdx={cycleIdx}
                 totalCycles={totalCycles}
+                connected={wsConnected}
               />
             </div>
 

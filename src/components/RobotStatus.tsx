@@ -8,13 +8,14 @@ export interface RobotStatusProps {
   taskStatus: TaskStatus;
   cycleIdx: number;
   totalCycles: number;
+  connected?: boolean;
 }
 
-export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, totalCycles }: RobotStatusProps) {
+export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, totalCycles, connected = true }: RobotStatusProps) {
   const progress = totalCycles > 0 ? (cycleIdx / totalCycles) * 100 : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', opacity: connected ? 1 : 0.5 }}>
       {/* Joint states */}
       <div>
         <div style={{
@@ -25,18 +26,18 @@ export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, t
           Joint States · M0609
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
-          {joints.map((deg, i) => (
+          {[0, 1, 2, 3, 4, 5].map(i => (
             <div key={i} style={{
               background: 'var(--color-bg-surface-2)',
-              border: '1px solid var(--color-border-subtle)',
+              border: `1px solid ${connected ? 'var(--color-border-subtle)' : 'var(--color-border-default)'}`,
               borderRadius: 'var(--radius-sm)',
               padding: '5px 7px',
             }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)', marginBottom: 1 }}>
                 J{i + 1}
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 500, color: 'var(--color-cyan)' }}>
-                {deg.toFixed(1)}<span style={{ fontSize: 9, color: 'var(--color-text-disabled)' }}>°</span>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 500, color: connected ? 'var(--color-cyan)' : 'var(--color-text-disabled)' }}>
+                {connected ? <>{joints[i]?.toFixed(1)}<span style={{ fontSize: 9, color: 'var(--color-text-disabled)' }}>°</span></> : '—'}
               </div>
             </div>
           ))}
@@ -60,14 +61,14 @@ export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, t
           }}>
             <div style={{
               height: '100%',
-              width: `${Math.min(gripperMm / 75 * 100, 100)}%`,
+              width: connected ? `${Math.min(gripperMm / 75 * 100, 100)}%` : '0%',
               background: 'var(--color-amber)',
               borderRadius: 'var(--radius-full)',
               transition: 'width 300ms ease',
             }} />
           </div>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-amber)', minWidth: 46 }}>
-            {gripperMm.toFixed(1)} mm
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: connected ? 'var(--color-amber)' : 'var(--color-text-disabled)', minWidth: 46 }}>
+            {connected ? `${gripperMm.toFixed(1)} mm` : '— mm'}
           </span>
         </div>
       </div>
@@ -117,15 +118,17 @@ export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, t
           End-Effector
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
-          {([['X', '0.412'], ['Y', '-0.073'], ['Z', '0.336']] as [string, string][]).map(([axis, val]) => (
+          {(['X', 'Y', 'Z'] as string[]).map(axis => (
             <div key={axis} style={{
               background: 'var(--color-bg-surface-2)',
-              border: '1px solid var(--color-border-subtle)',
+              border: `1px solid ${connected ? 'var(--color-border-subtle)' : 'var(--color-border-default)'}`,
               borderRadius: 'var(--radius-sm)',
               padding: '5px 7px',
             }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)', marginBottom: 1 }}>{axis}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)' }}>{val}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: connected ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }}>
+                —
+              </div>
             </div>
           ))}
         </div>
