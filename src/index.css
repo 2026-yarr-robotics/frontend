@@ -166,7 +166,8 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  --sidebar-width:  260px;
+  --sidebar-width:     260px;
+  --right-panel-width: 340px;
   --header-height:  52px;
   --panel-padding:  var(--space-4);
   --card-padding:   var(--space-3);
@@ -235,7 +236,7 @@ input, button { font-family: inherit; }
 .dashboard-layout {
   display: grid;
   grid-template-rows: var(--header-height) 1fr;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr var(--right-panel-width);
   height: 100vh;
   overflow: hidden;
   background: var(--color-bg-base);
@@ -268,6 +269,13 @@ input, button { font-family: inherit; }
   overflow: hidden;
   padding: var(--space-3);
   gap: var(--space-3);
+}
+.dashboard-rightpanel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--color-border-default);
+  background: var(--color-bg-surface-1);
 }
 
 /* ─────────────────────────────────────────

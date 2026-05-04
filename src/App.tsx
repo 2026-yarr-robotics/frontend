@@ -315,8 +315,8 @@ export default function App() {
 
       {/* ── Main ── */}
       <main className="dashboard-main">
-        {/* Camera row */}
-        <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
+        {/* Camera row — fills all available height */}
+        <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0, position: 'relative' }}>
           <CameraPanel
             title="Eye-to-Hand"
             topic="/fixed_camera/color/image_raw/compressed"
@@ -332,10 +332,9 @@ export default function App() {
             streamUrl="/ws/camera/handineye"
             onClickFeed={handleCameraClick}
           />
-          {/* Selection mode overlay indicator */}
           {selectMode && (
             <div style={{
-              position: 'absolute', top: 60, left: '50%', transform: 'translateX(-50%)',
+              position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
               padding: '6px 16px', borderRadius: 20,
               background: selectMode === 'stack'
                 ? 'oklch(68% 0.18 145 / 0.9)'
@@ -349,15 +348,19 @@ export default function App() {
             </div>
           )}
         </div>
-
-        {/* Bottom row */}
-        <div style={{ display: 'flex', gap: 12, height: 220, flexShrink: 0 }}>
-          <LogFeed entries={logs} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 400, flexShrink: 0 }}>
-            <CommandInput onSend={handleCommand} disabled={isRunning} />
-          </div>
-        </div>
       </main>
+
+      {/* ── Right Panel: Log + Command ── */}
+      <div className="dashboard-rightpanel">
+        {/* Log feed — scrollable, fills available space */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <LogFeed entries={logs} />
+        </div>
+        {/* Command input pinned to bottom */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid var(--color-border-default)' }}>
+          <CommandInput onSend={handleCommand} disabled={isRunning} />
+        </div>
+      </div>
     </div>
   );
 }
