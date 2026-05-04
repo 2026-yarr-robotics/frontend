@@ -21,21 +21,15 @@ const DEFAULT_LIMITS: WorkspaceLimits = {
   grid_spacing: 0.05,
 };
 
-const STEP = 0.005;           // 5mm per D-pad press
-const LARGE_MOVE_MM = 50;     // warn if any axis delta exceeds this
-
-function roundToGrid(v: number, spacing: number) {
-  return Math.round(v / spacing) * spacing;
-}
+const STEP = 0.005;
+const LARGE_MOVE_MM = 50;
 
 function fmtM(v: number) { return v.toFixed(3); }
-
-function fmtDelta(d: number): string {
+function fmtDelta(d: number) {
   const mm = d * 1000;
   return (mm >= 0 ? '+' : '') + mm.toFixed(0) + 'mm';
 }
-
-function deltaColor(d: number): string {
+function deltaColor(d: number) {
   const abs = Math.abs(d) * 1000;
   if (abs < 10) return 'var(--color-green)';
   if (abs < LARGE_MOVE_MM) return 'var(--color-amber)';
@@ -50,11 +44,13 @@ export default function ManualControl({
 }: ManualControlProps) {
   const [limits, setLimits] = useState<WorkspaceLimits | null>(null);
   const [target, setTarget] = useState<Position>({ x: 0, y: 0, z: 0.4 });
-  const [gridX, setGridX] = useState(0);
-  const [gridY, setGridY] = useState(0);
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
+  const [editing, setEditing] = useState<'x' | 'y' | 'z' | null>(null);
+  const [editVal, setEditVal] = useState('');
+  const [confirmHome, setConfirmHome] = useState(false);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const initializedRef = useRef(false);
 
   useEffect(() => {
@@ -63,30 +59,25 @@ export default function ManualControl({
 
   const effectiveLimits = limits ?? (devMode ? DEFAULT_LIMITS : null);
 
-  // One-time initialization of target from actual EE position when first received
   useEffect(() => {
     if (!eePosition || initializedRef.current) return;
     initializedRef.current = true;
-    const pos = { x: eePosition.x, y: eePosition.y, z: eePosition.z };
-    setTarget(pos);
-    const sp = (effectiveLimits?.grid_spacing) ?? 0.05;
-    setGridX(roundToGrid(pos.x, sp));
-    setGridY(roundToGrid(pos.y, sp));
-  }, [eePosition, effectiveLimits]);
+    setTarget({ x: eePosition.x, y: eePosition.y, z: eePosition.z });
+  }, [eePosition]);
+
+  useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
 
   const isDisabled = moving || (!devMode && disabled);
 
-  // Delta between actual EE position and commanded target
-  const delta = eePosition ? {
-    x: target.x - eePosition.x,
-    y: target.y - eePosition.y,
-    z: target.z - eePosition.z,
-  } : null;
+  const delta = eePosition
+    ? { x: target.x - eePosition.x, y: target.y - eePosition.y, z: target.z - eePosition.z }
+    : null;
 
   const maxDeltaMm = delta
     ? Math.max(Math.abs(delta.x), Math.abs(delta.y), Math.abs(delta.z)) * 1000
     : 0;
   const isLargeMove = maxDeltaMm > LARGE_MOVE_MM;
+  const hasPendingMove = !!delta && maxDeltaMm > 1;
 
   function clamp(v: number, min: number, max: number) {
     return Math.max(min, Math.min(max, v));
@@ -109,23 +100,23 @@ export default function ManualControl({
     }
   }
 
-  function handleRelativeMove(axis: 'x' | 'y' | 'z', delta: number) {
+  function handleRelativeMove(axis: 'x' | 'y' | 'z', d: number) {
     if (!effectiveLimits || isDisabled) return;
     const next = { ...target };
-    next[axis] = clamp(target[axis] + delta, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
+    next[axis] = clamp(target[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
     setTarget(next);
     executeMove(next);
   }
 
-  function handleGridMove() {
-    if (!effectiveLimits || isDisabled) return;
-    const next = { x: gridX, y: gridY, z: target.z };
-    setTarget(next);
-    executeMove(next);
-  }
-
-  function handleHome() {
-    if (!effectiveLimits || isDisabled) return;
+  function pressHome() {
+    if (isDisabled) return;
+    if (!confirmHome) {
+      setConfirmHome(true);
+      confirmTimerRef.current = setTimeout(() => setConfirmHome(false), 2000);
+      return;
+    }
+    clearTimeout(confirmTimerRef.current);
+    setConfirmHome(false);
     const home: Position = { x: 0, y: 0, z: 0.4 };
     setTarget(home);
     executeMove(home);
@@ -133,11 +124,30 @@ export default function ManualControl({
 
   function snapToActual() {
     if (!eePosition) return;
-    const pos = { x: eePosition.x, y: eePosition.y, z: eePosition.z };
-    setTarget(pos);
-    const sp = effectiveLimits?.grid_spacing ?? 0.05;
-    setGridX(roundToGrid(pos.x, sp));
-    setGridY(roundToGrid(pos.y, sp));
+    setTarget({ x: eePosition.x, y: eePosition.y, z: eePosition.z });
+  }
+
+  function startEdit(axis: 'x' | 'y' | 'z') {
+    if (isDisabled) return;
+    setEditing(axis);
+    setEditVal(target[axis].toFixed(3));
+  }
+
+  function commitEdit() {
+    if (!editing || !effectiveLimits) { setEditing(null); return; }
+    const v = parseFloat(editVal);
+    if (!isNaN(v)) {
+      setTarget(prev => ({
+        ...prev,
+        [editing]: clamp(v, effectiveLimits[`${editing}_min`], effectiveLimits[`${editing}_max`]),
+      }));
+    }
+    setEditing(null);
+  }
+
+  function handleEditKey(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') commitEdit();
+    if (e.key === 'Escape') setEditing(null);
   }
 
   const headerRight = (
@@ -150,7 +160,7 @@ export default function ManualControl({
           border: devMode ? '1px solid var(--color-cyan)' : '1px solid var(--color-border-default)',
           color: devMode ? 'var(--color-cyan)' : 'var(--color-text-tertiary)',
         }}
-        title="Developer mode: bypass connection check"
+        title="Developer mode"
       >
         DEV
       </button>
@@ -184,8 +194,6 @@ export default function ManualControl({
     );
   }
 
-  const spacing = effectiveLimits.grid_spacing || 0.05;
-
   return (
     <div className="ds-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div className="ds-card-header">
@@ -201,233 +209,183 @@ export default function ManualControl({
 
       <div style={{ padding: 12, flex: 1, display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
 
-        {/* ── Position: Actual vs Target ── */}
+        {/* ── Position: Actual | Target (editable) | Delta ── */}
         <div>
-          {/* Column headers */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '16px 1fr 1fr 50px',
-            gap: '2px 6px',
-            marginBottom: 4,
+            display: 'grid', gridTemplateColumns: '14px 1fr 1fr 48px',
+            gap: '2px 6px', marginBottom: 5, alignItems: 'center',
           }}>
             <div />
             <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600,
-              color: 'var(--color-text-tertiary)', letterSpacing: '0.08em' }}>
-              ACTUAL
-            </div>
+              color: 'var(--color-text-tertiary)', letterSpacing: '0.08em' }}>ACTUAL</div>
             <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600,
               color: 'var(--color-cyan)', letterSpacing: '0.08em' }}>
-              TARGET
+              TARGET{' '}
+              <span style={{ color: 'var(--color-text-disabled)', fontWeight: 400 }}>click to edit</span>
             </div>
             <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600,
-              color: 'var(--color-text-tertiary)', letterSpacing: '0.08em' }}>
-              DELTA
-            </div>
+              color: 'var(--color-text-tertiary)', letterSpacing: '0.08em' }}>Δ</div>
           </div>
 
-          {/* X / Y / Z rows */}
           {(['x', 'y', 'z'] as const).map(axis => (
             <div key={axis} style={{
-              display: 'grid',
-              gridTemplateColumns: '16px 1fr 1fr 50px',
-              gap: '2px 6px',
-              alignItems: 'center',
-              marginBottom: 3,
+              display: 'grid', gridTemplateColumns: '14px 1fr 1fr 48px',
+              gap: '2px 6px', alignItems: 'center', marginBottom: 4,
             }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10,
                 color: 'var(--color-text-tertiary)', fontWeight: 600 }}>
                 {axis.toUpperCase()}
               </span>
-              {/* Actual */}
               <span style={{
                 fontFamily: 'var(--font-mono)', fontSize: 12,
                 color: eePosition ? 'var(--color-text-primary)' : 'var(--color-text-disabled)',
                 background: 'var(--color-bg-surface-2)',
                 border: '1px solid var(--color-border-subtle)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '3px 6px',
+                borderRadius: 'var(--radius-sm)', padding: '3px 6px',
               }}>
                 {eePosition ? fmtM(eePosition[axis]) : '—'}
               </span>
-              {/* Target */}
+
+              {editing === axis ? (
+                <input
+                  autoFocus
+                  type="number"
+                  step={0.001}
+                  min={effectiveLimits[`${axis}_min`]}
+                  max={effectiveLimits[`${axis}_max`]}
+                  value={editVal}
+                  onChange={e => setEditVal(e.target.value)}
+                  onBlur={commitEdit}
+                  onKeyDown={handleEditKey}
+                  style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 12,
+                    color: 'var(--color-cyan)',
+                    background: 'var(--color-bg-surface-2)',
+                    border: '1px solid var(--color-cyan)',
+                    borderRadius: 'var(--radius-sm)', padding: '3px 6px',
+                    outline: 'none', width: '100%',
+                  }}
+                />
+              ) : (
+                <span
+                  onClick={() => startEdit(axis)}
+                  title="Click to edit target coordinate"
+                  style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 12,
+                    color: 'var(--color-cyan)',
+                    background: 'var(--color-bg-surface-2)',
+                    border: '1px solid var(--color-border-subtle)',
+                    borderRadius: 'var(--radius-sm)', padding: '3px 6px',
+                    cursor: isDisabled ? 'default' : 'text',
+                  }}
+                  onMouseEnter={e => { if (!isDisabled) (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-cyan)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border-subtle)'; }}
+                >
+                  {fmtM(target[axis])}
+                </span>
+              )}
+
               <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: 12,
-                color: 'var(--color-cyan)',
-                background: 'var(--color-bg-surface-2)',
-                border: '1px solid var(--color-border-subtle)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '3px 6px',
-              }}>
-                {fmtM(target[axis])}
-              </span>
-              {/* Delta */}
-              <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: 10,
+                fontFamily: 'var(--font-mono)', fontSize: 10, textAlign: 'right',
                 color: delta ? deltaColor(delta[axis]) : 'var(--color-text-disabled)',
-                textAlign: 'right',
               }}>
                 {delta ? fmtDelta(delta[axis]) : '—'}
               </span>
             </div>
           ))}
 
-          {/* Large move warning + snap button */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-            {isLargeMove ? (
-              <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: 9,
-                color: 'var(--color-red)',
-              }}>
-                ⚠ {maxDeltaMm.toFixed(0)}mm 이동
-              </span>
-            ) : <div />}
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
             <button
               className="ds-btn ghost sm"
               onClick={snapToActual}
               disabled={!eePosition}
-              title="타겟을 현재 실제 위치로 초기화"
-              style={{ fontSize: 9, padding: '2px 8px' }}
+              style={{ fontSize: 9, padding: '3px 8px', flexShrink: 0 }}
+              title="Reset target to actual robot position"
             >
-              ↺ 현재 위치로
+              ↺ Reset to Actual
             </button>
-          </div>
-        </div>
-
-        <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
-
-        {/* ── XY D-Pad ── */}
-        <div>
-          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-            color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-            XY MOVE (±{STEP * 1000}mm)
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 4,
-            maxWidth: 160,
-            margin: '0 auto',
-          }}>
-            {/* Row 1: blank · ↑Y · blank */}
-            <div />
-            <button className="ds-btn ghost sm"
-              onClick={() => handleRelativeMove('y', STEP)}
-              disabled={isDisabled} title="+Y"
-              style={{ width: '100%', justifyContent: 'center' }}>↑</button>
-            <div />
-
-            {/* Row 2: ←X · HOME · →X */}
-            <button className="ds-btn ghost sm"
-              onClick={() => handleRelativeMove('x', -STEP)}
-              disabled={isDisabled} title="-X"
-              style={{ width: '100%', justifyContent: 'center' }}>←</button>
-            <button className="ds-btn primary sm"
-              onClick={handleHome}
-              disabled={isDisabled} title="HOME (0, 0, 0.4m)"
-              style={{ width: '100%', justifyContent: 'center' }}>⌂</button>
-            <button className="ds-btn ghost sm"
-              onClick={() => handleRelativeMove('x', STEP)}
-              disabled={isDisabled} title="+X"
-              style={{ width: '100%', justifyContent: 'center' }}>→</button>
-
-            {/* Row 3: blank · ↓Y · blank */}
-            <div />
-            <button className="ds-btn ghost sm"
-              onClick={() => handleRelativeMove('y', -STEP)}
-              disabled={isDisabled} title="-Y"
-              style={{ width: '100%', justifyContent: 'center' }}>↓</button>
-            <div />
-          </div>
-        </div>
-
-        <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
-
-        {/* ── Grid Point — absolute XY ── */}
-        <div>
-          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-            color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-            GRID POINT (절대)
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            {(['x', 'y'] as const).map(axis => (
-              <div key={axis} style={{ flex: 1 }}>
-                <label style={{
-                  display: 'block', fontFamily: 'var(--font-mono)', fontSize: 9,
-                  color: 'var(--color-text-tertiary)', marginBottom: 2,
-                }}>
-                  {axis.toUpperCase()} (m)
-                </label>
-                <input
-                  type="number"
-                  step={spacing}
-                  min={effectiveLimits[`${axis}_min`]}
-                  max={effectiveLimits[`${axis}_max`]}
-                  value={axis === 'x' ? gridX : gridY}
-                  onChange={e => {
-                    const v = parseFloat(e.target.value) || 0;
-                    if (axis === 'x') setGridX(v); else setGridY(v);
-                  }}
-                  disabled={isDisabled}
-                  style={{
-                    width: '100%',
-                    background: 'var(--color-bg-surface-2)',
-                    border: '1px solid var(--color-border-default)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '4px 6px',
-                    fontFamily: 'var(--font-mono)', fontSize: 11,
-                    color: 'var(--color-text-primary)',
-                  }}
-                />
-              </div>
-            ))}
+            <div style={{ flex: 1 }} />
+            {isLargeMove && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-red)' }}>
+                ⚠ {maxDeltaMm.toFixed(0)}mm
+              </span>
+            )}
             <button
               className={`ds-btn sm ${isLargeMove ? 'danger' : 'primary'}`}
-              onClick={handleGridMove}
-              disabled={isDisabled}
-              title={isLargeMove ? `⚠ 큰 이동 (${maxDeltaMm.toFixed(0)}mm)` : '이동'}
+              onClick={() => executeMove(target)}
+              disabled={isDisabled || !hasPendingMove}
               style={{ flexShrink: 0 }}
+              title="Move to target coordinates"
             >
-              {isLargeMove ? '⚠ Move' : 'Move'}
+              Move to Target →
             </button>
           </div>
-          {/* Show current EE grid position for reference */}
-          {eePosition && (
-            <div style={{ marginTop: 4, fontFamily: 'var(--font-mono)', fontSize: 9,
-              color: 'var(--color-text-tertiary)' }}>
-              현재 격자: X={roundToGrid(eePosition.x, spacing).toFixed(3)}
-              {' '} Y={roundToGrid(eePosition.y, spacing).toFixed(3)}
-            </div>
-          )}
         </div>
 
         <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
 
-        {/* ── Z Height ── */}
+        {/* ── Fine Move: XY D-pad + Z step ── */}
+        <div>
+          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
+            color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+            Fine Move (±{STEP * 1000}mm)
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 4, maxWidth: 160, margin: '0 auto' }}>
+            <div />
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↑</button>
+            <div />
+
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', -STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>←</button>
+            <button
+              className={`ds-btn sm ${confirmHome ? 'danger' : 'primary'}`}
+              onClick={pressHome}
+              disabled={isDisabled}
+              title={confirmHome ? 'Press again to confirm home move' : 'HOME (0, 0, 0.4m) — press twice to confirm'}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              {confirmHome ? 'Sure?' : '⌂'}
+            </button>
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>→</button>
+
+            <div />
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', -STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↓</button>
+            <div />
+
+            {/* Z row */}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', STEP)}
+              disabled={isDisabled} title="+Z 5mm"
+              style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>+Z</button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
+                color: 'var(--color-text-tertiary)' }}>
+                {fmtM(target.z)}m
+              </span>
+            </div>
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', -STEP)}
+              disabled={isDisabled} title="-Z 5mm"
+              style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>−Z</button>
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
+
+        {/* ── Z Slider ── */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
               color: 'var(--color-text-secondary)' }}>
-              Z HEIGHT (절대)
+              Z Slider
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button className="ds-btn ghost sm"
-                onClick={() => handleRelativeMove('z', STEP)}
-                disabled={isDisabled}
-                style={{ padding: '3px 8px', fontSize: 10 }}>+Z</button>
-              <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: 11,
-                color: 'var(--color-cyan)', minWidth: 52, textAlign: 'center',
-              }}>
-                {fmtM(target.z)}m
-              </span>
-              <button className="ds-btn ghost sm"
-                onClick={() => handleRelativeMove('z', -STEP)}
-                disabled={isDisabled}
-                style={{ padding: '3px 8px', fontSize: 10 }}>−Z</button>
-            </div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-cyan)' }}>
+              {fmtM(target.z)}m
+            </span>
           </div>
 
-          {/* Slider with actual Z marker */}
           <div style={{ position: 'relative' }}>
             <input
               type="range"
@@ -445,20 +403,15 @@ export default function ManualControl({
               disabled={isDisabled}
               style={{ width: '100%', cursor: isDisabled ? 'not-allowed' : 'pointer' }}
             />
-            {/* Actual Z marker line */}
             {eePosition && (
               <div style={{
-                position: 'absolute',
-                top: '50%',
+                position: 'absolute', top: '50%',
                 left: `${((eePosition.z - effectiveLimits.z_min) / (effectiveLimits.z_max - effectiveLimits.z_min)) * 100}%`,
                 transform: 'translate(-50%, -50%)',
-                width: 2,
-                height: 12,
+                width: 2, height: 12,
                 background: 'var(--color-green)',
-                borderRadius: 1,
-                pointerEvents: 'none',
-                opacity: 0.8,
-              }} title={`실제 Z: ${fmtM(eePosition.z)}m`} />
+                borderRadius: 1, pointerEvents: 'none', opacity: 0.8,
+              }} title={`Actual Z: ${fmtM(eePosition.z)}m`} />
             )}
           </div>
 
@@ -470,20 +423,8 @@ export default function ManualControl({
               {effectiveLimits.z_max.toFixed(2)}m
             </span>
           </div>
-
-          {/* Delta Z badge */}
-          {delta && Math.abs(delta.z) > 0.002 && (
-            <div style={{
-              marginTop: 4, textAlign: 'center',
-              fontFamily: 'var(--font-mono)', fontSize: 9,
-              color: deltaColor(delta.z),
-            }}>
-              실제 Z {fmtM(eePosition!.z)}m → 목표 {fmtM(target.z)}m ({fmtDelta(delta.z)})
-            </div>
-          )}
         </div>
 
-        {/* ── Error / warnings ── */}
         {error && (
           <div style={{
             padding: '6px 8px',
@@ -496,7 +437,6 @@ export default function ManualControl({
             {error}
           </div>
         )}
-
         {devMode && (
           <div style={{
             padding: '5px 8px',
@@ -505,9 +445,8 @@ export default function ManualControl({
             borderRadius: 'var(--radius-sm)',
             fontFamily: 'var(--font-mono)', fontSize: 9,
             color: 'oklch(75% 0.18 200)',
-            display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            ⚙ Developer mode{!limits ? ' · 기본 한계값 사용 중' : ''}
+            ⚙ Developer mode{!limits ? ' · using default limits' : ''}
           </div>
         )}
       </div>

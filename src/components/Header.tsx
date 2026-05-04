@@ -1,4 +1,4 @@
-// Header.tsx — YARR Robotics Dashboard top navigation bar
+import { useState, useRef, useEffect } from 'react';
 
 interface TaskBadgeProps {
   status: 'idle' | 'planning' | 'executing' | 'complete' | 'error';
@@ -31,11 +31,49 @@ export interface HeaderProps {
   rosConnected: boolean;
   taskStatus: 'idle' | 'planning' | 'executing' | 'complete' | 'error';
   isRunning: boolean;
+  bringupActive: boolean;
+  robotIp: string;
   onToggleSidebar: () => void;
   onAbort: () => void;
+  onToggleBringup: () => void;
+  onChangeRobotIp: (ip: string) => void;
 }
 
-export default function Header({ rosConnected, taskStatus, isRunning, onToggleSidebar, onAbort }: HeaderProps) {
+export default function Header({
+  rosConnected,
+  taskStatus,
+  isRunning,
+  bringupActive,
+  robotIp,
+  onToggleSidebar,
+  onAbort,
+  onToggleBringup,
+  onChangeRobotIp,
+}: HeaderProps) {
+  const [showSettings, setShowSettings] = useState(false);
+  const [ipDraft, setIpDraft] = useState(robotIp);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  // Keep draft in sync when prop changes externally
+  useEffect(() => { setIpDraft(robotIp); }, [robotIp]);
+
+  // Close settings panel on outside click
+  useEffect(() => {
+    if (!showSettings) return;
+    function onOutside(e: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setShowSettings(false);
+      }
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [showSettings]);
+
+  function commitIp() {
+    const trimmed = ipDraft.trim();
+    if (trimmed) onChangeRobotIp(trimmed);
+  }
+
   return (
     <header className="dashboard-header">
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -53,7 +91,6 @@ export default function Header({ rosConnected, taskStatus, isRunning, onToggleSi
           </svg>
         </button>
 
-        {/* Wordmark */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 16, color: 'var(--color-cyan)', letterSpacing: '0.05em' }}>
             YARR
@@ -68,7 +105,7 @@ export default function Header({ rosConnected, taskStatus, isRunning, onToggleSi
         </span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <TaskBadge status={taskStatus} />
 
         {isRunning && (
@@ -76,6 +113,26 @@ export default function Header({ rosConnected, taskStatus, isRunning, onToggleSi
             Abort
           </button>
         )}
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 20, background: 'var(--color-border-default)' }} />
+
+        {/* Bringup toggle */}
+        <button
+          className={`ds-btn sm ${bringupActive ? 'danger' : 'secondary'}`}
+          onClick={onToggleBringup}
+          disabled={!rosConnected}
+          title={bringupActive ? 'Stop bringup' : `Start bringup (${robotIp})`}
+        >
+          {bringupActive ? (
+            <>■ Stop Bringup</>
+          ) : (
+            <><span style={{ opacity: 0.6, marginRight: 4, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{robotIp}</span>▷ Bringup</>
+          )}
+        </button>
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 20, background: 'var(--color-border-default)' }} />
 
         {/* ROS connection pill */}
         <div style={{
@@ -89,18 +146,101 @@ export default function Header({ rosConnected, taskStatus, isRunning, onToggleSi
             fontFamily: 'var(--font-mono)', fontSize: 11,
             color: rosConnected ? 'var(--color-green)' : 'var(--color-red)',
           }}>
-            {rosConnected ? '192.168.1.100' : 'Disconnected'}
+            {rosConnected ? 'Connected' : 'Disconnected'}
           </span>
         </div>
 
-        {/* Settings */}
-        <button className="ds-btn ghost icon-only" title="Settings">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </button>
+        {/* Settings button + popover */}
+        <div ref={settingsRef} style={{ position: 'relative' }}>
+          <button
+            className={`ds-btn ghost icon-only ${showSettings ? 'primary' : ''}`}
+            onClick={() => setShowSettings(v => !v)}
+            title="Settings"
+            style={showSettings ? {
+              background: 'oklch(75% 0.18 200 / 0.15)',
+              border: '1px solid oklch(75% 0.18 200 / 0.4)',
+            } : {}}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+
+          {showSettings && (
+            <div style={{
+              position: 'absolute', top: '100%', right: 0, marginTop: 6,
+              background: 'var(--color-bg-surface-1)',
+              border: '1px solid var(--color-border-default)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-overlay)',
+              padding: '12px 14px',
+              minWidth: 240,
+              zIndex: 100,
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600,
+                letterSpacing: '0.1em', color: 'var(--color-text-tertiary)',
+                textTransform: 'uppercase', marginBottom: 10,
+              }}>
+                Settings
+              </div>
+
+              {/* Robot IP */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={{
+                  display: 'block', fontFamily: 'var(--font-ui)', fontSize: 11,
+                  color: 'var(--color-text-secondary)', marginBottom: 4,
+                }}>
+                  Robot IP
+                </label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={ipDraft}
+                    onChange={e => setIpDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { commitIp(); setShowSettings(false); } }}
+                    placeholder="192.168.1.100"
+                    disabled={bringupActive}
+                    style={{
+                      flex: 1,
+                      background: 'var(--color-bg-surface-2)',
+                      border: '1px solid var(--color-border-default)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '5px 8px',
+                      fontFamily: 'var(--font-mono)', fontSize: 12,
+                      color: 'var(--color-text-primary)',
+                      outline: 'none',
+                    }}
+                    onFocus={e => { e.target.style.borderColor = 'var(--color-cyan)'; }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--color-border-default)'; }}
+                  />
+                  <button
+                    className="ds-btn primary sm"
+                    onClick={() => { commitIp(); setShowSettings(false); }}
+                    disabled={bringupActive || !ipDraft.trim()}
+                  >
+                    Apply
+                  </button>
+                </div>
+                {bringupActive && (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
+                    color: 'var(--color-text-disabled)', marginTop: 3, display: 'block' }}>
+                    Stop bringup to change IP
+                  </span>
+                )}
+              </div>
+
+              <div style={{
+                borderTop: '1px solid var(--color-border-subtle)', paddingTop: 8,
+                fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-disabled)',
+              }}>
+                Current: {robotIp}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

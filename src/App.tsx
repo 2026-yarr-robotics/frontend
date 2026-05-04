@@ -43,7 +43,7 @@ export default function App() {
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('idle');
   const [cycleIdx, setCycleIdx] = useState(0);
   const [bringupActive, setBringupActive] = useState(false);
-  const [robotIp] = useState('192.168.1.100');
+  const [robotIp, setRobotIp] = useState('192.168.1.100');
   const [wsConnected, setWsConnected] = useState(false);
   const [lastDataTime, setLastDataTime] = useState<number>(0);
   const [eePosition, setEePosition] = useState<EePosition | null>(null);
@@ -222,8 +222,12 @@ export default function App() {
         rosConnected={wsConnected}
         taskStatus={taskStatus}
         isRunning={isRunning}
+        bringupActive={bringupActive}
+        robotIp={robotIp}
         onToggleSidebar={() => setSidebarOpen(o => !o)}
         onAbort={handleAbort}
+        onToggleBringup={toggleBringup}
+        onChangeRobotIp={setRobotIp}
       />
 
       {/* ── Sidebar ── */}
@@ -270,22 +274,6 @@ export default function App() {
                 disabled={!wsConnected || isRunning || !bringupActive}
                 eePosition={eePosition}
               />
-            </div>
-
-            {/* Quick actions */}
-            <div style={{
-              padding: '10px 12px',
-              borderTop: '1px solid var(--color-border-default)',
-              display: 'flex', flexDirection: 'column', gap: 6,
-            }}>
-              <button
-                className={`ds-btn ${bringupActive ? 'danger' : 'secondary'}`}
-                style={{ width: '100%', justifyContent: 'center' }}
-                disabled={!wsConnected}
-                onClick={toggleBringup}
-              >
-                {bringupActive ? 'Stop Bringup' : `Start Bringup (${robotIp})`}
-              </button>
             </div>
           </>
         )}
