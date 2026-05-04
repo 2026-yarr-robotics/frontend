@@ -466,10 +466,6 @@ export default function ManualControl({
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)' }}>
               {effectiveLimits.z_min.toFixed(2)}m
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
-              color: 'oklch(72% 0.18 55)', fontStyle: 'italic' }}>
-              드래그 후 놓으면 적용
-            </span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)' }}>
               {effectiveLimits.z_max.toFixed(2)}m
             </span>
