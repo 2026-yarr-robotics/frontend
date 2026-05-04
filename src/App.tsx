@@ -310,8 +310,8 @@ export default function App() {
           <CameraPanel
             title="Eye-in-Hand"
             topic="/camera/eye_in_hand/image_raw"
-            isActive={cameraActive}
-            isLive={cameraActive}
+            isActive={wsConnected}
+            isLive={wsConnected}
             streamUrl="/ws/camera/handineye"
             onClickFeed={handleCameraClick}
           />
