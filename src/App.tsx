@@ -10,12 +10,13 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, startTask, stopTask } from './api';
+import { startBringup, stopBringup, startTask, stopTask, type EePosition } from './api';
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
   task: { name: string | null; status: string };
   tasks: { name: string; command: string; status: string; pid: number | null }[];
+  ee_position?: EePosition | null;
 }
 
 interface TaskLog {
@@ -45,7 +46,7 @@ export default function App() {
   const [robotIp] = useState('192.168.1.100');
   const [wsConnected, setWsConnected] = useState(false);
   const [lastDataTime, setLastDataTime] = useState<number>(0);
-  const [eePosition, setEePosition] = useState<{ x: number; y: number; z: number } | null>(null);
+  const [eePosition, setEePosition] = useState<EePosition | null>(null);
   const [selectMode, setSelectMode] = useState<SelectMode>(null);
   const totalCycles = 6;
 
@@ -64,6 +65,8 @@ export default function App() {
     const taskName = data.task?.name;
     const taskSt = data.task?.status;
     setBringupActive(taskName === BRINGUP_TASK && taskSt === 'running');
+
+    if (data.ee_position) setEePosition(data.ee_position);
 
     if (taskSt === 'running') setTaskStatus('executing');
     else if (taskSt === 'idle' || taskSt === null) setTaskStatus('idle');
@@ -263,7 +266,10 @@ export default function App() {
                 connected={bringupActive}
                 eePosition={eePosition}
               />
-              <ManualControl disabled={!wsConnected || isRunning || !bringupActive} />
+              <ManualControl
+                disabled={!wsConnected || isRunning || !bringupActive}
+                eePosition={eePosition}
+              />
             </div>
 
             {/* Quick actions */}
@@ -272,7 +278,6 @@ export default function App() {
               borderTop: '1px solid var(--color-border-default)',
               display: 'flex', flexDirection: 'column', gap: 6,
             }}>
-              {/* Bringup Real toggle */}
               <button
                 className={`ds-btn ${bringupActive ? 'danger' : 'secondary'}`}
                 style={{ width: '100%', justifyContent: 'center' }}
@@ -280,33 +285,6 @@ export default function App() {
                 onClick={toggleBringup}
               >
                 {bringupActive ? 'Stop Bringup' : `Start Bringup (${robotIp})`}
-              </button>
-
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  className={`ds-btn ${selectMode === 'stack' ? 'danger' : 'primary'}`}
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  disabled={!wsConnected || isRunning}
-                  onClick={selectMode === 'stack' ? () => setSelectMode(null) : requestStack}
-                >
-                  {selectMode === 'stack' ? 'Cancel' : 'Stack'}
-                </button>
-                <button
-                  className={`ds-btn ${selectMode === 'unstack' ? 'danger' : 'secondary'}`}
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  disabled={!wsConnected || isRunning}
-                  onClick={selectMode === 'unstack' ? () => setSelectMode(null) : requestUnstack}
-                >
-                  {selectMode === 'unstack' ? 'Cancel' : 'Unstack'}
-                </button>
-              </div>
-              <button
-                className="ds-btn ghost"
-                style={{ width: '100%', justifyContent: 'center' }}
-                disabled={!wsConnected || isRunning}
-                onClick={() => handleCommand('Move to HOME')}
-              >
-                Return HOME
               </button>
             </div>
           </>

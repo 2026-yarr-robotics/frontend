@@ -52,6 +52,25 @@ export async function getWorkspaceLimits(): Promise<WorkspaceLimits> {
   return get('/api/robot/workspace/limits');
 }
 
-export async function moveRobot(x: number, y: number, z: number, mode: 'absolute' | 'relative' = 'absolute') {
-  return post('/api/robot/move', { x, y, z, mode });
+export interface EePosition {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface MoveResponse {
+  success?: boolean;
+  message?: string;
+  position?: EePosition;
+}
+
+export async function getEePosition(): Promise<EePosition> {
+  return get('/api/robot/position');
+}
+
+export async function moveRobot(
+  x: number, y: number, z: number,
+  mode: 'absolute' | 'relative' = 'absolute',
+): Promise<MoveResponse> {
+  return post<MoveResponse>('/api/robot/move', { x, y, z, mode });
 }
