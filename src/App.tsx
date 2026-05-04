@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import './index.css';
 
 import Header from './components/Header';
@@ -6,6 +6,7 @@ import CameraPanel from './components/CameraPanel';
 import CommandInput from './components/CommandInput';
 import LogFeed from './components/LogFeed';
 import RobotStatus from './components/RobotStatus';
+import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
@@ -43,6 +44,7 @@ export default function App() {
   const [bringupActive, setBringupActive] = useState(false);
   const [robotIp] = useState('192.168.1.100');
   const [wsConnected, setWsConnected] = useState(false);
+  const [lastDataTime, setLastDataTime] = useState<number>(0);
   const [selectMode, setSelectMode] = useState<SelectMode>(null);
   const totalCycles = 6;
 
@@ -52,6 +54,8 @@ export default function App() {
 
   // ── WebSocket: robot state (10Hz) ──
   const handleRobotState = useCallback((data: RobotState) => {
+    const now = Date.now();
+    setLastDataTime(now);
     setWsConnected(true);
     if (data.joints?.position?.length) {
       setJoints(data.joints.position.map((rad: number) => (rad * 180) / Math.PI));
@@ -64,6 +68,16 @@ export default function App() {
     else if (taskSt === 'idle' || taskSt === null) setTaskStatus('idle');
     else if (taskSt === 'failed') setTaskStatus('error');
   }, []);
+
+  // Check for disconnection (no data for 2 seconds)
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (Date.now() - lastDataTime > 2000 && wsConnected) {
+        setWsConnected(false);
+      }
+    }, 500);
+    return () => clearInterval(checkInterval);
+  }, [wsConnected, lastDataTime]);
 
   useJsonWebSocket<RobotState>('/ws/robot/state', handleRobotState);
 
@@ -315,6 +329,7 @@ export default function App() {
             streamUrl="/ws/camera/handineye"
             onClickFeed={handleCameraClick}
           />
+          <ManualControl disabled={!wsConnected || isRunning} />
           {/* Selection mode overlay indicator */}
           {selectMode && (
             <div style={{
