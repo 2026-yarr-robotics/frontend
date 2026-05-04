@@ -1,4 +1,4 @@
-// RobotStatus.tsx — Sidebar robot status panel (joints, gripper, task progress)
+// RobotStatus.tsx — Sidebar robot status panel (joints, gripper, task progress, end-effector)
 
 export type TaskStatus = 'idle' | 'planning' | 'executing' | 'complete' | 'error';
 
@@ -9,9 +9,10 @@ export interface RobotStatusProps {
   cycleIdx: number;
   totalCycles: number;
   connected?: boolean;
+  eePosition?: { x: number; y: number; z: number } | null;
 }
 
-export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, totalCycles, connected = true }: RobotStatusProps) {
+export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, totalCycles, connected = true, eePosition }: RobotStatusProps) {
   const progress = totalCycles > 0 ? (cycleIdx / totalCycles) * 100 : 0;
 
   return (
@@ -115,19 +116,19 @@ export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, t
           letterSpacing: '0.1em', textTransform: 'uppercase',
           color: 'var(--color-text-tertiary)', marginBottom: 5,
         }}>
-          End-Effector
+          End-Effector (m)
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
-          {(['X', 'Y', 'Z'] as string[]).map(axis => (
+          {(['x', 'y', 'z'] as const).map(axis => (
             <div key={axis} style={{
               background: 'var(--color-bg-surface-2)',
               border: `1px solid ${connected ? 'var(--color-border-subtle)' : 'var(--color-border-default)'}`,
               borderRadius: 'var(--radius-sm)',
               padding: '5px 7px',
             }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)', marginBottom: 1 }}>{axis}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: connected ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }}>
-                —
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)', marginBottom: 1 }}>{axis.toUpperCase()}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: connected && eePosition ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }}>
+                {connected && eePosition ? eePosition[axis].toFixed(3) : '—'}
               </div>
             </div>
           ))}

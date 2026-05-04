@@ -45,6 +45,7 @@ export default function App() {
   const [robotIp] = useState('192.168.1.100');
   const [wsConnected, setWsConnected] = useState(false);
   const [lastDataTime, setLastDataTime] = useState<number>(0);
+  const [eePosition, setEePosition] = useState<{ x: number; y: number; z: number } | null>(null);
   const [selectMode, setSelectMode] = useState<SelectMode>(null);
   const totalCycles = 6;
 
@@ -242,25 +243,27 @@ export default function App() {
                 Robot Status
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span className={`status-dot ${wsConnected ? 'live' : 'error'}`} />
+                <span className={`status-dot ${bringupActive ? 'live' : 'error'}`} />
                 <span style={{
                   fontFamily: 'var(--font-mono)', fontSize: 10,
-                  color: wsConnected ? 'var(--color-green)' : 'var(--color-red)',
+                  color: bringupActive ? 'var(--color-green)' : 'var(--color-red)',
                 }}>
-                  {wsConnected ? 'CONNECTED' : 'OFFLINE'}
+                  {bringupActive ? 'CONNECTED' : 'OFFLINE'}
                 </span>
               </div>
             </div>
 
-            <div style={{ overflowY: 'auto', flex: 1 }}>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <RobotStatus
                 joints={joints}
                 gripperMm={gripperMm}
                 taskStatus={taskStatus}
                 cycleIdx={cycleIdx}
                 totalCycles={totalCycles}
-                connected={wsConnected}
+                connected={bringupActive}
+                eePosition={eePosition}
               />
+              <ManualControl disabled={!wsConnected || isRunning || !bringupActive} />
             </div>
 
             {/* Quick actions */}
@@ -329,7 +332,6 @@ export default function App() {
             streamUrl="/ws/camera/handineye"
             onClickFeed={handleCameraClick}
           />
-          <ManualControl disabled={!wsConnected || isRunning} />
           {/* Selection mode overlay indicator */}
           {selectMode && (
             <div style={{
