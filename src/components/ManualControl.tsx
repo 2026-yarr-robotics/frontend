@@ -102,8 +102,10 @@ export default function ManualControl({
 
   function handleRelativeMove(axis: 'x' | 'y' | 'z', d: number) {
     if (!effectiveLimits || isDisabled) return;
-    const next = { ...target };
-    next[axis] = clamp(target[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
+    // Always jog from actual position, ignoring staged target
+    const base = eePosition ?? target;
+    const next: Position = { x: base.x, y: base.y, z: base.z };
+    next[axis] = clamp(base[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
     setTarget(next);
     executeMove(next);
   }
@@ -324,57 +326,7 @@ export default function ManualControl({
 
         <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
 
-        {/* ── Fine Move: XY D-pad + Z step ── */}
-        <div>
-          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-            color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-            Fine Move (±{STEP * 1000}mm)
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 4, maxWidth: 160, margin: '0 auto' }}>
-            <div />
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', STEP)}
-              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↑</button>
-            <div />
-
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', -STEP)}
-              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>←</button>
-            <button
-              className={`ds-btn sm ${confirmHome ? 'danger' : 'primary'}`}
-              onClick={pressHome}
-              disabled={isDisabled}
-              title={confirmHome ? 'Press again to confirm home move' : 'HOME (0, 0, 0.4m) — press twice to confirm'}
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              {confirmHome ? 'Sure?' : '⌂'}
-            </button>
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', STEP)}
-              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>→</button>
-
-            <div />
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', -STEP)}
-              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↓</button>
-            <div />
-
-            {/* Z row — −Z left, +Z right */}
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', -STEP)}
-              disabled={isDisabled} title="-Z 5mm"
-              style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>−Z</button>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
-                color: 'var(--color-text-tertiary)' }}>
-                {fmtM(target.z)}m
-              </span>
-            </div>
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', STEP)}
-              disabled={isDisabled} title="+Z 5mm"
-              style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>+Z</button>
-          </div>
-        </div>
-
-        <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
-
-        {/* ── XYZ Sliders ── */}
+        {/* ── XYZ Sliders (stage target, release to move) ── */}
         <div>
           <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
             color: 'var(--color-text-secondary)', marginBottom: 10 }}>
@@ -437,6 +389,56 @@ export default function ManualControl({
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
+
+        {/* ── Jog: step from actual position ── */}
+        <div>
+          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
+            color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+            Jog (±{STEP * 1000}mm)
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 4, maxWidth: 160, margin: '0 auto' }}>
+            <div />
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↑</button>
+            <div />
+
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', -STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>←</button>
+            <button
+              className={`ds-btn sm ${confirmHome ? 'danger' : 'primary'}`}
+              onClick={pressHome}
+              disabled={isDisabled}
+              title={confirmHome ? 'Press again to confirm home move' : 'HOME (0, 0, 0.4m) — press twice to confirm'}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              {confirmHome ? 'Sure?' : '⌂'}
+            </button>
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>→</button>
+
+            <div />
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', -STEP)}
+              disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↓</button>
+            <div />
+
+            {/* Z row — −Z left, +Z right */}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', -STEP)}
+              disabled={isDisabled} title="-Z 5mm"
+              style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>−Z</button>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
+                color: 'var(--color-text-tertiary)' }}>
+                {eePosition ? fmtM(eePosition.z) : '—'}m
+              </span>
+            </div>
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', STEP)}
+              disabled={isDisabled} title="+Z 5mm"
+              style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>+Z</button>
           </div>
         </div>
 
