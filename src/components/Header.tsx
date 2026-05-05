@@ -28,6 +28,7 @@ function TaskBadge({ status }: TaskBadgeProps) {
 }
 
 export interface HeaderProps {
+  wsStatus: 'connecting' | 'live' | 'lost';
   rosConnected: boolean;
   taskStatus: 'idle' | 'planning' | 'executing' | 'complete' | 'error';
   isRunning: boolean;
@@ -40,6 +41,7 @@ export interface HeaderProps {
 }
 
 export default function Header({
+  wsStatus,
   rosConnected,
   taskStatus,
   isRunning,
@@ -141,12 +143,16 @@ export default function Header({
           border: '1px solid var(--color-border-default)',
           background: 'var(--color-bg-surface-2)',
         }}>
-          <span className={`status-dot ${rosConnected ? 'live' : 'error'}`} />
+          <span className={`status-dot ${wsStatus === 'live' ? 'live' : wsStatus === 'connecting' ? 'planning' : 'error'}`} />
           <span style={{
             fontFamily: 'var(--font-mono)', fontSize: 11,
-            color: rosConnected ? 'var(--color-green)' : 'var(--color-red)',
+            color: wsStatus === 'live'
+              ? 'var(--color-green)'
+              : wsStatus === 'connecting'
+                ? 'var(--color-text-secondary)'
+                : 'var(--color-red)',
           }}>
-            {rosConnected ? 'Connected' : 'Disconnected'}
+            {wsStatus === 'live' ? 'Connected' : wsStatus === 'connecting' ? 'Connecting…' : 'Disconnected'}
           </span>
         </div>
 

@@ -44,7 +44,7 @@ export default function App() {
   const [cycleIdx, setCycleIdx] = useState(0);
   const [bringupActive, setBringupActive] = useState(false);
   const [robotIp, setRobotIp] = useState('192.168.1.100');
-  const [wsConnected, setWsConnected] = useState(false);
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'live' | 'lost'>('connecting');
   const [lastDataTime, setLastDataTime] = useState<number>(0);
   const [eePosition, setEePosition] = useState<EePosition | null>(null);
   const [selectMode, setSelectMode] = useState<SelectMode>(null);
@@ -58,7 +58,7 @@ export default function App() {
   const handleRobotState = useCallback((data: RobotState) => {
     const now = Date.now();
     setLastDataTime(now);
-    setWsConnected(true);
+    setWsStatus('live');
     if (data.joints?.position?.length) {
       setJoints(data.joints.position.map((rad: number) => (rad * 180) / Math.PI));
     }
@@ -76,12 +76,12 @@ export default function App() {
   // Check for disconnection (no data for 2 seconds)
   useEffect(() => {
     const checkInterval = setInterval(() => {
-      if (Date.now() - lastDataTime > 2000 && wsConnected) {
-        setWsConnected(false);
+      if (Date.now() - lastDataTime > 2000 && wsStatus === 'live') {
+        setWsStatus('lost');
       }
     }, 500);
     return () => clearInterval(checkInterval);
-  }, [wsConnected, lastDataTime]);
+  }, [wsStatus, lastDataTime]);
 
   useJsonWebSocket<RobotState>('/ws/robot/state', handleRobotState);
 
@@ -212,6 +212,7 @@ export default function App() {
     addLog('ERR', 'Task aborted by operator');
   }
 
+  const wsConnected = wsStatus === 'live';
   const isRunning = taskStatus === 'planning' || taskStatus === 'executing';
   const cameraActive = wsConnected && bringupActive;
 
@@ -219,6 +220,7 @@ export default function App() {
     <div className="dashboard-layout">
       {/* ── Header ── */}
       <Header
+        wsStatus={wsStatus}
         rosConnected={wsConnected}
         taskStatus={taskStatus}
         isRunning={isRunning}
