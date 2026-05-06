@@ -10,7 +10,7 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, startTask, stopTask, type EePosition } from './api';
+import { startBringup, stopBringup, startTask, stopTask, gripperControl, type EePosition } from './api';
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
@@ -36,6 +36,7 @@ type SelectMode = null | 'stack' | 'unstack';
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [logs, setLogs] = useState<LogEntry[]>([
     { time: now(), level: 'INFO', msg: 'Dashboard loaded — connecting to server…' },
   ]);
@@ -216,8 +217,10 @@ export default function App() {
     addLog('ERR', 'Task aborted by operator');
   }
 
+  const gridCols = `${sidebarOpen ? 'var(--sidebar-width)' : '0px'} 1fr ${rightPanelOpen ? 'var(--right-panel-width)' : '0px'}`;
+
   return (
-    <div className="dashboard-layout">
+    <div className="dashboard-layout" style={{ gridTemplateColumns: gridCols }}>
       {/* ── Header ── */}
       <Header
         wsStatus={wsStatus}
@@ -226,7 +229,9 @@ export default function App() {
         isRunning={isRunning}
         bringupActive={bringupActive}
         robotIp={robotIp}
+        rightPanelOpen={rightPanelOpen}
         onToggleSidebar={() => setSidebarOpen(o => !o)}
+        onToggleRightPanel={() => setRightPanelOpen(o => !o)}
         onAbort={handleAbort}
         onToggleBringup={toggleBringup}
         onChangeRobotIp={setRobotIp}
@@ -319,7 +324,10 @@ export default function App() {
       </main>
 
       {/* ── Right Panel: Log + Command ── */}
-      <div className="dashboard-rightpanel">
+      <div
+        className="dashboard-rightpanel"
+        style={{ width: rightPanelOpen ? 'var(--right-panel-width)' : 0, overflow: 'hidden', transition: 'width var(--transition-base)' }}
+      >
         {/* Log feed — scrollable, fills available space */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <LogFeed entries={logs} />

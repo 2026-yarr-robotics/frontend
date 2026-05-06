@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getWorkspaceLimits, moveRobot, type WorkspaceLimits, type EePosition } from '../api';
+import { getWorkspaceLimits, moveRobot, gripperControl, type WorkspaceLimits, type EePosition } from '../api';
 
 interface ManualControlProps {
   disabled?: boolean;
@@ -45,6 +45,8 @@ export default function ManualControl({
   const [limits, setLimits] = useState<WorkspaceLimits | null>(null);
   const [target, setTarget] = useState<Position>({ x: 0, y: 0, z: 0.4 });
   const [moving, setMoving] = useState(false);
+  const [gripperState, setGripperState] = useState<'open' | 'closed' | null>(null);
+  const [gripperMoving, setGripperMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
   const [editing, setEditing] = useState<'x' | 'y' | 'z' | null>(null);
@@ -122,6 +124,20 @@ export default function ManualControl({
     const home: Position = { x: 0, y: 0, z: 0.4 };
     setTarget(home);
     executeMove(home);
+  }
+
+  async function handleGripper(command: 'open' | 'close') {
+    if (isDisabled || gripperMoving) return;
+    setGripperMoving(true);
+    setError(null);
+    try {
+      await gripperControl(command);
+      setGripperState(command === 'open' ? 'open' : 'closed');
+    } catch (e: any) {
+      setError(`Gripper: ${e.message}`);
+    } finally {
+      setGripperMoving(false);
+    }
   }
 
   function snapToActual() {
@@ -326,74 +342,6 @@ export default function ManualControl({
 
         <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
 
-        {/* ── XYZ Sliders (stage target, release to move) ── */}
-        <div>
-          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-            color: 'var(--color-text-secondary)', marginBottom: 10 }}>
-            Sliders
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {(['x', 'y', 'z'] as const).map(axis => {
-              const min = effectiveLimits[`${axis}_min`];
-              const max = effectiveLimits[`${axis}_max`];
-              const actualPct = eePosition
-                ? ((eePosition[axis] - min) / (max - min)) * 100
-                : null;
-              return (
-                <div key={axis}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10,
-                      color: 'var(--color-text-tertiary)', fontWeight: 600 }}>
-                      {axis.toUpperCase()}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-cyan)' }}>
-                      {fmtM(target[axis])}m
-                    </span>
-                  </div>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      type="range"
-                      min={min}
-                      max={max}
-                      step={0.005}
-                      value={target[axis]}
-                      onChange={e => setTarget(prev => ({ ...prev, [axis]: parseFloat(e.target.value) }))}
-                      onPointerUp={e => {
-                        const v = parseFloat((e.target as HTMLInputElement).value);
-                        const next = { ...target, [axis]: v };
-                        setTarget(next);
-                        if (!isDisabled) executeMove(next);
-                      }}
-                      disabled={isDisabled}
-                      style={{ width: '100%', cursor: isDisabled ? 'not-allowed' : 'pointer' }}
-                    />
-                    {actualPct !== null && (
-                      <div style={{
-                        position: 'absolute', top: '50%',
-                        left: `${actualPct}%`,
-                        transform: 'translate(-50%, -50%)',
-                        width: 2, height: 12,
-                        background: 'var(--color-green)',
-                        borderRadius: 1, pointerEvents: 'none', opacity: 0.8,
-                      }} title={`Actual ${axis.toUpperCase()}: ${fmtM(eePosition![axis])}m`} />
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 1 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-disabled)' }}>
-                      {min.toFixed(2)}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-disabled)' }}>
-                      {max.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
-
         {/* ── Jog: step from actual position ── */}
         <div>
           <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
@@ -439,6 +387,43 @@ export default function ManualControl({
             <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', STEP)}
               disabled={isDisabled} title="+Z 5mm"
               style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>+Z</button>
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
+
+        {/* ── Gripper ── */}
+        <div>
+          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
+            color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+            Gripper
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              className={`ds-btn sm ${gripperState === 'open' ? 'primary' : 'secondary'}`}
+              onClick={() => handleGripper('open')}
+              disabled={isDisabled || gripperMoving}
+              style={{ flex: 1 }}
+            >
+              {gripperMoving && gripperState !== 'closed' ? '…' : '↔ Open'}
+            </button>
+            <button
+              className={`ds-btn sm ${gripperState === 'closed' ? 'primary' : 'secondary'}`}
+              onClick={() => handleGripper('close')}
+              disabled={isDisabled || gripperMoving}
+              style={{ flex: 1 }}
+            >
+              {gripperMoving && gripperState !== 'open' ? '…' : '↕ Close'}
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <span className={`status-dot ${
+                gripperMoving ? 'planning' : gripperState === 'open' ? 'live' : gripperState === 'closed' ? 'error' : 'idle'
+              }`} />
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
+                color: 'var(--color-text-disabled)' }}>
+                {gripperMoving ? 'MOVING' : gripperState ?? '—'}
+              </span>
+            </div>
           </div>
         </div>
 

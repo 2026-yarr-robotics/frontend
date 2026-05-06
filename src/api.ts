@@ -68,6 +68,10 @@ export async function getEePosition(): Promise<EePosition> {
   return get('/api/robot/position');
 }
 
+export async function gripperControl(command: 'open' | 'close'): Promise<{ success?: boolean; message?: string }> {
+  return post('/api/robot/gripper', { command });
+}
+
 export async function moveRobot(
   x: number, y: number, z: number,
   mode: 'absolute' | 'relative' = 'absolute',

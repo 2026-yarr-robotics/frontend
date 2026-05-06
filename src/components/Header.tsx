@@ -34,7 +34,9 @@ export interface HeaderProps {
   isRunning: boolean;
   bringupActive: boolean;
   robotIp: string;
+  rightPanelOpen: boolean;
   onToggleSidebar: () => void;
+  onToggleRightPanel: () => void;
   onAbort: () => void;
   onToggleBringup: () => void;
   onChangeRobotIp: (ip: string) => void;
@@ -47,7 +49,9 @@ export default function Header({
   isRunning,
   bringupActive,
   robotIp,
+  rightPanelOpen,
   onToggleSidebar,
+  onToggleRightPanel,
   onAbort,
   onToggleBringup,
   onChangeRobotIp,
@@ -155,6 +159,20 @@ export default function Header({
             {wsStatus === 'live' ? 'Connected' : wsStatus === 'connecting' ? 'Connecting…' : 'Disconnected'}
           </span>
         </div>
+
+        {/* Right panel toggle */}
+        <button
+          className="ds-btn ghost icon-only"
+          onClick={onToggleRightPanel}
+          title={rightPanelOpen ? 'Hide log panel' : 'Show log panel'}
+          style={rightPanelOpen ? {} : { opacity: 0.5 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+        </button>
 
         {/* Settings button + popover */}
         <div ref={settingsRef} style={{ position: 'relative' }}>
