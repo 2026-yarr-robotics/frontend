@@ -15,6 +15,7 @@ import { startBringup, stopBringup, startTask, stopTask, type EePosition } from 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
   task: { name: string | null; status: string };
+  bringup: { name: string | null; status: string };
   tasks: { name: string; command: string; status: string; pid: number | null }[];
   ee_position?: EePosition | null;
 }
@@ -62,12 +63,12 @@ export default function App() {
     if (data.joints?.position?.length) {
       setJoints(data.joints.position.map((rad: number) => (rad * 180) / Math.PI));
     }
-    const taskName = data.task?.name;
-    const taskSt = data.task?.status;
-    setBringupActive(taskName === BRINGUP_TASK && taskSt === 'running');
+
+    setBringupActive(data.bringup?.status === 'running');
 
     if (data.ee_position) setEePosition(data.ee_position);
 
+    const taskSt = data.task?.status;
     if (taskSt === 'running') setTaskStatus('executing');
     else if (taskSt === 'idle' || taskSt === null) setTaskStatus('idle');
     else if (taskSt === 'failed') setTaskStatus('error');
