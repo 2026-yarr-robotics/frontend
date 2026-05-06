@@ -50,7 +50,7 @@ export default function ManualControl({
   const [editing, setEditing] = useState<'x' | 'y' | 'z' | null>(null);
   const [editVal, setEditVal] = useState('');
   const [confirmHome, setConfirmHome] = useState(false);
-  const confirmTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const initializedRef = useRef(false);
 
   useEffect(() => {

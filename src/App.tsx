@@ -122,6 +122,9 @@ export default function App() {
     }
   }
 
+  const wsConnected = wsStatus === 'live';
+  const isRunning = taskStatus === 'planning' || taskStatus === 'executing';
+
   // ── Enter target selection mode ──
   function requestStack() {
     if (!wsConnected || !bringupActive) {
@@ -211,10 +214,6 @@ export default function App() {
     setSelectMode(null);
     addLog('ERR', 'Task aborted by operator');
   }
-
-  const wsConnected = wsStatus === 'live';
-  const isRunning = taskStatus === 'planning' || taskStatus === 'executing';
-  const cameraActive = wsConnected && bringupActive;
 
   return (
     <div className="dashboard-layout">
