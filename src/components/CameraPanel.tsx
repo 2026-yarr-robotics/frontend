@@ -37,14 +37,17 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [wsRef, setWsRef] = useState<WebSocket | null>(null);
   const [currentBlob, setCurrentBlob] = useState<Blob | null>(null);
+  const [streamEnabled, setStreamEnabled] = useState(true);
   const prevUrlRef = useRef<string | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const captureIdRef = useRef(0);
 
+  const effectiveActive = isActive && streamEnabled;
+
   const connectStream = useCallback(() => {
-    if (!mountedRef.current || !streamUrl || !isLive || !isActive) return;
+    if (!mountedRef.current || !streamUrl || !isLive || !effectiveActive) return;
 
     const ws = new WebSocket(wsUrl(streamUrl));
     ws.binaryType = 'arraybuffer';
@@ -58,13 +61,13 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
     };
     ws.onclose = () => {
       setWsRef(null);
-      if (mountedRef.current && isLive && isActive) {
+      if (mountedRef.current && isLive && effectiveActive) {
         reconnectTimerRef.current = setTimeout(connectStream, 2000);
       }
     };
     ws.onerror = () => ws.close();
     setWsRef(ws);
-  }, [streamUrl, isLive, isActive]);
+  }, [streamUrl, isLive, effectiveActive]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -82,11 +85,11 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
   }, [connectStream]);
 
   useEffect(() => {
-    if (!isLive || !isActive) {
+    if (!isLive || !effectiveActive) {
       setImgUrl(null);
       setCurrentBlob(null);
     }
-  }, [isLive, isActive]);
+  }, [isLive, effectiveActive]);
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -147,7 +150,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
     });
   }
 
-  const hasFeed = isLive && imgUrl;
+  const hasFeed = isLive && effectiveActive && !!imgUrl;
 
   return (
     <div className="ds-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -161,6 +164,24 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
           <span className="ds-card-label">{title}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Stream toggle button */}
+          <button
+            className="ds-btn ghost sm"
+            onClick={() => setStreamEnabled(v => !v)}
+            title={streamEnabled ? 'Stop stream' : 'Start stream'}
+            style={{ opacity: streamEnabled ? 1 : 0.45 }}
+          >
+            {streamEnabled ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="6" y="4" width="4" height="16"/>
+                <rect x="14" y="4" width="4" height="16"/>
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+            )}
+          </button>
           {/* Capture button */}
           <button
             className={`ds-btn ghost sm ${hasFeed ? '' : 'disabled'}`}
@@ -182,10 +203,12 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               {fps} fps
             </span>
           )}
-          {!isActive ? (
+          {!effectiveActive ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span className="status-dot error" />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-red)' }}>DISCONNECTED</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-red)' }}>
+                {!streamEnabled ? 'PAUSED' : 'DISCONNECTED'}
+              </span>
             </div>
           ) : isLive ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -218,33 +241,53 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         {/* Background */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: (isLive && isActive)
+          background: (isLive && effectiveActive)
             ? 'radial-gradient(ellipse at 40% 50%, #0a1020 0%, #050810 70%)'
             : '#060810',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          {(!isActive || !isLive) && (
+          {(!effectiveActive || !isLive) && (
             <div style={{ textAlign: 'center' }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
-                stroke="var(--color-red)" strokeWidth="1.5" strokeLinecap="round"
-                style={{ opacity: 0.6 }}>
-                <path d="M23 7l-7 5 7 5V7z"/>
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-              <div style={{
-                fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
-                color: 'var(--color-red)', marginTop: 8, letterSpacing: '0.08em',
-                opacity: 0.8,
-              }}>
-                NO SIGNAL
-              </div>
+              {!streamEnabled ? (
+                <>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--color-text-tertiary)" strokeWidth="1.5" strokeLinecap="round"
+                    style={{ opacity: 0.4 }}>
+                    <rect x="6" y="4" width="4" height="16"/>
+                    <rect x="14" y="4" width="4" height="16"/>
+                  </svg>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
+                    color: 'var(--color-text-tertiary)', marginTop: 8, letterSpacing: '0.08em',
+                    opacity: 0.6,
+                  }}>
+                    PAUSED
+                  </div>
+                </>
+              ) : (
+                <>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--color-red)" strokeWidth="1.5" strokeLinecap="round"
+                    style={{ opacity: 0.6 }}>
+                    <path d="M23 7l-7 5 7 5V7z"/>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600,
+                    color: 'var(--color-red)', marginTop: 8, letterSpacing: '0.08em',
+                    opacity: 0.8,
+                  }}>
+                    NO SIGNAL
+                  </div>
+                </>
+              )}
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)', marginTop: 4, opacity: 0.5 }}>
                 {topic}
               </div>
             </div>
           )}
-          {isActive && isLive && !hasFeed && (
+          {effectiveActive && isLive && !hasFeed && (
             <div style={{ opacity: 0.15, fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-tertiary)' }}>
               {topic}
             </div>
