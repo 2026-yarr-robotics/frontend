@@ -100,9 +100,11 @@ export default function ManualControl({
   }
 
   function handleRelativeMove(axis: 'x' | 'y' | 'z', d: number) {
-    if (!effectiveLimits || isDisabled || !eePosition) return;
-    const next: Position = { x: eePosition.x, y: eePosition.y, z: eePosition.z };
-    next[axis] = clamp(eePosition[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
+    if (!effectiveLimits || isDisabled) return;
+    const base = eePosition ?? target;
+    const next: Position = { ...base };
+    next[axis] = clamp(base[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
+    setTarget(next);
     executeMove(next);
   }
 
