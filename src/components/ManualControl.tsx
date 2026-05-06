@@ -90,10 +90,7 @@ export default function ManualControl({
     setError(null);
     onMoveStart?.();
     try {
-      const res = await moveRobot(pos.x, pos.y, pos.z, 'absolute');
-      if (res.position) {
-        setTarget({ x: res.position.x, y: res.position.y, z: res.position.z });
-      }
+      await moveRobot(pos.x, pos.y, pos.z, 'absolute');
     } catch (e: any) {
       setError(`Move failed: ${e.message}`);
     } finally {
@@ -103,12 +100,9 @@ export default function ManualControl({
   }
 
   function handleRelativeMove(axis: 'x' | 'y' | 'z', d: number) {
-    if (!effectiveLimits || isDisabled) return;
-    // Always jog from actual position, ignoring staged target
-    const base = eePosition ?? target;
-    const next: Position = { x: base.x, y: base.y, z: base.z };
-    next[axis] = clamp(base[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
-    setTarget(next);
+    if (!effectiveLimits || isDisabled || !eePosition) return;
+    const next: Position = { x: eePosition.x, y: eePosition.y, z: eePosition.z };
+    next[axis] = clamp(eePosition[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
     executeMove(next);
   }
 
