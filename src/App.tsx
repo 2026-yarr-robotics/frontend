@@ -289,7 +289,7 @@ export default function App() {
                 eePosition={eePosition}
               />
               <ManualControl
-                disabled={!wsConnected || isRunning || !moveCartesianRunning}
+                disabled={!wsConnected || isRunning || !robotOnline}
                 eePosition={eePosition}
               />
             </div>
