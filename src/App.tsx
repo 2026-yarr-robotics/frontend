@@ -327,6 +327,7 @@ export default function App() {
               isLive={wsConnected}
               streamUrl="/ws/camera/handineye"
               onClickFeed={handleCameraClick}
+              objectFit="contain"
             />
           )}
 

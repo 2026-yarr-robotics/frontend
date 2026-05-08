@@ -14,6 +14,8 @@ export interface CameraPanelProps {
   streamUrl?: string;
   /** Called with actual pixel coordinates in the camera image */
   onClickFeed?: (pos: { px: number; py: number }) => void;
+  /** 'cover' (default, fills panel) or 'contain' (show full image with letterbox) */
+  objectFit?: 'cover' | 'contain';
 }
 
 interface ClickPos {
@@ -30,7 +32,7 @@ interface Capture {
   filename: string;
 }
 
-export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, streamUrl, onClickFeed }: CameraPanelProps) {
+export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, streamUrl, onClickFeed, objectFit = 'cover' }: CameraPanelProps) {
   const [hovered, setHovered] = useState(false);
   const [clickPos, setClickPos] = useState<ClickPos | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
@@ -93,12 +95,36 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
-    const displayX = e.clientX - rect.left;
-    const displayY = e.clientY - rect.top;
-    const scaleX = imgRef.current ? imgRef.current.naturalWidth / rect.width : 1;
-    const scaleY = imgRef.current ? imgRef.current.naturalHeight / rect.height : 1;
-    const px = Math.round(displayX * scaleX);
-    const py = Math.round(displayY * scaleY);
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    const img = imgRef.current;
+    let px: number, py: number;
+    let displayX = clickX, displayY = clickY;
+
+    if (objectFit === 'contain' && img && img.naturalWidth > 0) {
+      // Compute rendered image rect within the container (letterbox-aware)
+      const natW = img.naturalWidth;
+      const natH = img.naturalHeight;
+      const scale = Math.min(rect.width / natW, rect.height / natH);
+      const rendW = natW * scale;
+      const rendH = natH * scale;
+      const offX = (rect.width - rendW) / 2;
+      const offY = (rect.height - rendH) / 2;
+      // Clamp to image area
+      const imgX = Math.max(0, Math.min(clickX - offX, rendW));
+      const imgY = Math.max(0, Math.min(clickY - offY, rendH));
+      px = Math.round(imgX / scale);
+      py = Math.round(imgY / scale);
+      displayX = offX + imgX;
+      displayY = offY + imgY;
+    } else {
+      const scaleX = img ? img.naturalWidth / rect.width : 1;
+      const scaleY = img ? img.naturalHeight / rect.height : 1;
+      px = Math.round(clickX * scaleX);
+      py = Math.round(clickY * scaleY);
+    }
+
     setClickPos({ px, py, displayX, displayY });
     onClickFeed?.({ px, py });
   }
@@ -285,7 +311,7 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
             style={{
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
-              objectFit: 'cover',
+              objectFit,
               opacity: 0.92,
             }}
           />
