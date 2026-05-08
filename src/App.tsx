@@ -161,12 +161,12 @@ export default function App() {
   // ── Camera click → launch web task with pixel coords ──
   async function handleCameraClick({ px, py }: { px: number; py: number }) {
     if (selectMode === 'stack') {
-      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_pyramid_web…`);
+      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_pyramid_select…`);
       setSelectMode(null);
       setTaskStatus('planning');
       setCycleIdx(0);
       try {
-        await startTask('cup_pyramid_web', { pixel_x: String(px), pixel_y: String(py) });
+        await startTask('cup_pyramid_select', { pixel_x: String(px), pixel_y: String(py) });
       } catch (e) {
         addLog('ERR', (e as Error).message);
         setTaskStatus('idle');
@@ -174,12 +174,12 @@ export default function App() {
       return;
     }
     if (selectMode === 'unstack') {
-      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_unstack_web…`);
+      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_unstack_select…`);
       setSelectMode(null);
       setTaskStatus('planning');
       setCycleIdx(0);
       try {
-        await startTask('cup_unstack_web', { pixel_x: String(px), pixel_y: String(py) });
+        await startTask('cup_unstack_select', { pixel_x: String(px), pixel_y: String(py) });
       } catch (e) {
         addLog('ERR', (e as Error).message);
         setTaskStatus('idle');
@@ -196,8 +196,8 @@ export default function App() {
     try {
       if (/stop/i.test(cmd)) {
         addLog('WARN', 'Sending stop…');
-        await stopTask('cup_pyramid_web');
-        await stopTask('cup_unstack_web');
+        await stopTask('cup_pyramid_select');
+        await stopTask('cup_unstack_select');
         setTaskStatus('idle');
         setSelectMode(null);
         return;
@@ -222,8 +222,8 @@ export default function App() {
   }, [wsConnected, bringupActive]);
 
   function handleAbort() {
-    stopTask('cup_pyramid_web').catch(() => {});
-    stopTask('cup_unstack_web').catch(() => {});
+    stopTask('cup_pyramid_select').catch(() => {});
+    stopTask('cup_unstack_select').catch(() => {});
     setTaskStatus('error');
     setSelectMode(null);
     addLog('ERR', 'Task aborted by operator');
