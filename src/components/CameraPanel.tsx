@@ -164,24 +164,6 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
           <span className="ds-card-label">{title}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Stream toggle button */}
-          <button
-            className="ds-btn ghost sm"
-            onClick={() => setStreamEnabled(v => !v)}
-            title={streamEnabled ? 'Stop stream' : 'Start stream'}
-            style={{ opacity: streamEnabled ? 1 : 0.45 }}
-          >
-            {streamEnabled ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <rect x="6" y="4" width="4" height="16"/>
-                <rect x="14" y="4" width="4" height="16"/>
-              </svg>
-            ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-              </svg>
-            )}
-          </button>
           {/* Capture button */}
           <button
             className={`ds-btn ghost sm ${hasFeed ? '' : 'disabled'}`}
@@ -346,6 +328,38 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
             {coords}
           </div>
         )}
+
+        {/* Stream play/pause overlay — top-right corner, always at the same position */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setStreamEnabled(v => !v); }}
+          title={streamEnabled ? 'Pause stream' : 'Resume stream'}
+          style={{
+            position: 'absolute', top: 8, left: 8,
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: '50%',
+            border: '1px solid oklch(75% 0.18 200 / 0.35)',
+            background: streamEnabled
+              ? 'rgba(10,15,24,0.65)'
+              : 'oklch(75% 0.18 200 / 0.18)',
+            color: streamEnabled ? 'oklch(75% 0.18 200 / 0.7)' : 'var(--color-cyan)',
+            cursor: 'pointer',
+            opacity: (!streamEnabled || hovered) ? 1 : 0,
+            transition: 'opacity 0.2s, background 0.15s',
+            zIndex: 5,
+          }}
+        >
+          {streamEnabled ? (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="6" y="4" width="4" height="16"/>
+              <rect x="14" y="4" width="4" height="16"/>
+            </svg>
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+          )}
+        </button>
 
         {/* Click hint */}
         {hasFeed && hovered && !clickPos && (
