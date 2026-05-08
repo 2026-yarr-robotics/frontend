@@ -45,6 +45,8 @@ export default function App() {
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('idle');
   const [cycleIdx, setCycleIdx] = useState(0);
   const [bringupActive, setBringupActive] = useState(false);
+  const [robotOnline, setRobotOnline] = useState(false);
+  const [moveCartesianRunning, setMoveCartesianRunning] = useState(false);
   const [robotIp, setRobotIp] = useState('192.168.1.100');
   const [wsStatus, setWsStatus] = useState<'connecting' | 'live' | 'lost'>('connecting');
   const [lastDataTime, setLastDataTime] = useState<number>(0);
@@ -67,6 +69,13 @@ export default function App() {
 
     setBringupActive(data.bringup?.status === 'running');
 
+    // Robot is online if joint states are actually flowing (works for external bringup too)
+    setRobotOnline((data.joints?.position?.length ?? 0) > 0);
+
+    // Move commands are available only when move_cartesian service is running
+    const mcTask = data.tasks?.find((t: { name: string; status: string }) => t.name === 'move_cartesian');
+    setMoveCartesianRunning(mcTask?.status === 'running');
+
     if (data.ee_position) setEePosition(data.ee_position);
 
     const taskSt = data.task?.status;
@@ -80,6 +89,8 @@ export default function App() {
     const checkInterval = setInterval(() => {
       if (Date.now() - lastDataTime > 2000 && wsStatus === 'live') {
         setWsStatus('lost');
+        setRobotOnline(false);
+        setMoveCartesianRunning(false);
       }
     }, 500);
     return () => clearInterval(checkInterval);
@@ -129,8 +140,8 @@ export default function App() {
 
   // ── Enter target selection mode ──
   function requestStack() {
-    if (!wsConnected || !bringupActive) {
-      addLog('WARN', 'Bringup must be active to use camera-guided tasks');
+    if (!wsConnected || !robotOnline) {
+      addLog('WARN', 'Robot must be online to use camera-guided tasks');
       return;
     }
     setSelectMode('stack');
@@ -138,8 +149,8 @@ export default function App() {
   }
 
   function requestUnstack() {
-    if (!wsConnected || !bringupActive) {
-      addLog('WARN', 'Bringup must be active to use camera-guided tasks');
+    if (!wsConnected || !robotOnline) {
+      addLog('WARN', 'Robot must be online to use camera-guided tasks');
       return;
     }
     setSelectMode('unstack');
@@ -257,12 +268,12 @@ export default function App() {
                 Robot Status
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span className={`status-dot ${bringupActive ? 'live' : 'error'}`} />
+                <span className={`status-dot ${robotOnline ? 'live' : 'error'}`} />
                 <span style={{
                   fontFamily: 'var(--font-mono)', fontSize: 10,
-                  color: bringupActive ? 'var(--color-green)' : 'var(--color-red)',
+                  color: robotOnline ? 'var(--color-green)' : 'var(--color-red)',
                 }}>
-                  {bringupActive ? 'CONNECTED' : 'OFFLINE'}
+                  {robotOnline ? 'CONNECTED' : 'OFFLINE'}
                 </span>
               </div>
             </div>
@@ -274,11 +285,11 @@ export default function App() {
                 taskStatus={taskStatus}
                 cycleIdx={cycleIdx}
                 totalCycles={totalCycles}
-                connected={bringupActive}
+                connected={robotOnline}
                 eePosition={eePosition}
               />
               <ManualControl
-                disabled={!wsConnected || isRunning || !bringupActive}
+                disabled={!wsConnected || isRunning || !moveCartesianRunning}
                 eePosition={eePosition}
               />
             </div>
