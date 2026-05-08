@@ -33,6 +33,7 @@ export interface HeaderProps {
   taskStatus: 'idle' | 'planning' | 'executing' | 'complete' | 'error';
   isRunning: boolean;
   bringupActive: boolean;
+  robotOnline: boolean;
   robotIp: string;
   rightPanelOpen: boolean;
   onToggleSidebar: () => void;
@@ -48,6 +49,7 @@ export default function Header({
   taskStatus,
   isRunning,
   bringupActive,
+  robotOnline,
   robotIp,
   rightPanelOpen,
   onToggleSidebar,
@@ -124,18 +126,39 @@ export default function Header({
         <div style={{ width: 1, height: 20, background: 'var(--color-border-default)' }} />
 
         {/* Bringup toggle */}
-        <button
-          className={`ds-btn sm ${bringupActive ? 'danger' : 'secondary'}`}
-          onClick={onToggleBringup}
-          disabled={!rosConnected}
-          title={bringupActive ? 'Stop bringup' : `Start bringup (${robotIp})`}
-        >
-          {bringupActive ? (
-            <>■ Stop Bringup</>
-          ) : (
-            <><span style={{ opacity: 0.6, marginRight: 4, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{robotIp}</span>▷ Bringup</>
-          )}
-        </button>
+        {bringupActive ? (
+          <button
+            className="ds-btn danger sm"
+            onClick={onToggleBringup}
+            disabled={!rosConnected}
+            title="Stop bringup"
+          >
+            ■ Stop Bringup
+          </button>
+        ) : robotOnline ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '3px 10px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid oklch(68% 0.18 145 / 0.35)',
+            background: 'oklch(68% 0.18 145 / 0.08)',
+            fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
+            color: 'var(--color-green)',
+          }}
+            title="Bringup running externally (started outside dashboard)"
+          >
+            <span className="status-dot live" />
+            Running
+          </div>
+        ) : (
+          <button
+            className="ds-btn secondary sm"
+            onClick={onToggleBringup}
+            disabled={!rosConnected}
+            title={`Start bringup (${robotIp})`}
+          >
+            <span style={{ opacity: 0.6, marginRight: 4, fontFamily: 'var(--font-mono)', fontSize: 10 }}>{robotIp}</span>▷ Bringup
+          </button>
+        )}
 
         {/* Separator */}
         <div style={{ width: 1, height: 20, background: 'var(--color-border-default)' }} />
@@ -226,7 +249,7 @@ export default function Header({
                     onChange={e => setIpDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { commitIp(); setShowSettings(false); } }}
                     placeholder="192.168.1.100"
-                    disabled={bringupActive}
+                    disabled={bringupActive || robotOnline}
                     style={{
                       flex: 1,
                       background: 'var(--color-bg-surface-2)',
@@ -248,10 +271,10 @@ export default function Header({
                     Apply
                   </button>
                 </div>
-                {bringupActive && (
+                {(bringupActive || robotOnline) && (
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
                     color: 'var(--color-text-disabled)', marginTop: 3, display: 'block' }}>
-                    Stop bringup to change IP
+                    {bringupActive ? 'Stop bringup to change IP' : 'Robot online — stop bringup to change IP'}
                   </span>
                 )}
               </div>

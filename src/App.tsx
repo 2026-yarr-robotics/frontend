@@ -239,6 +239,7 @@ export default function App() {
         taskStatus={taskStatus}
         isRunning={isRunning}
         bringupActive={bringupActive}
+        robotOnline={robotOnline}
         robotIp={robotIp}
         rightPanelOpen={rightPanelOpen}
         onToggleSidebar={() => setSidebarOpen(o => !o)}
