@@ -330,7 +330,7 @@ export default function App() {
       >
         {/* Log feed — scrollable, fills available space */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <LogFeed entries={logs} />
+          <LogFeed entries={logs} onClear={() => setLogs([])} />
         </div>
         {/* Command input pinned to bottom */}
         <div style={{ flexShrink: 0, borderTop: '1px solid var(--color-border-default)' }}>

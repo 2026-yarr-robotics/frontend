@@ -12,6 +12,7 @@ export interface LogEntry {
 export interface LogFeedProps {
   entries: LogEntry[];
   maxHeight?: string | number;
+  onClear?: () => void;
 }
 
 const LOG_COLORS: Record<LogLevel, string> = {
@@ -21,7 +22,7 @@ const LOG_COLORS: Record<LogLevel, string> = {
   ERR:  'var(--color-red)',
 };
 
-export default function LogFeed({ entries, maxHeight }: LogFeedProps) {
+export default function LogFeed({ entries, maxHeight, onClear }: LogFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,9 +43,21 @@ export default function LogFeed({ entries, maxHeight }: LogFeedProps) {
           </svg>
           <span className="ds-card-label">Log Feed</span>
         </div>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>
-          {entries.length} lines
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>
+            {entries.length} lines
+          </span>
+          {onClear && entries.length > 0 && (
+            <button
+              className="ds-btn ghost sm"
+              onClick={onClear}
+              title="Clear logs"
+              style={{ fontSize: 10, padding: '1px 6px' }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div
