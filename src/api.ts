@@ -78,3 +78,16 @@ export async function moveRobot(
 ): Promise<MoveResponse> {
   return post<MoveResponse>('/api/robot/move', { x, y, z, mode });
 }
+
+export interface WorldCoord {
+  x: number;
+  y: number;
+  z: number;
+  depth_mm: number;
+  pixel_x: number;
+  pixel_y: number;
+}
+
+export async function pixelToWorld(px: number, py: number): Promise<WorldCoord> {
+  return get<WorldCoord>(`/api/robot/pixel-to-world?px=${px}&py=${py}`);
+}

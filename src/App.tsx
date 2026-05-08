@@ -10,7 +10,7 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, startTask, stopTask, gripperControl, type EePosition } from './api';
+import { startBringup, stopBringup, startTask, stopTask, gripperControl, pixelToWorld, type EePosition } from './api';
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
@@ -158,10 +158,18 @@ export default function App() {
     addLog('INFO', 'Click the pyramid center on the Eye-in-Hand camera');
   }
 
-  // ── Camera click → launch web task with pixel coords ──
+  // ── Camera click → log world coords + launch web task ──
   async function handleCameraClick({ px, py }: { px: number; py: number }) {
+    // Try to get world coordinates immediately for the log
+    try {
+      const w = await pixelToWorld(px, py);
+      addLog('INFO', `Pixel (${px}, ${py}) → world (${w.x.toFixed(3)}, ${w.y.toFixed(3)}, ${w.z.toFixed(3)}) depth=${w.depth_mm}mm`);
+    } catch {
+      addLog('INFO', `Pixel: (${px}, ${py})`);
+    }
+
     if (selectMode === 'stack') {
-      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_pyramid_select…`);
+      addLog('INFO', `Launching cup_pyramid_select…`);
       setSelectMode(null);
       setTaskStatus('planning');
       setCycleIdx(0);
@@ -174,7 +182,7 @@ export default function App() {
       return;
     }
     if (selectMode === 'unstack') {
-      addLog('INFO', `Target pixel: (${px}, ${py}) — launching cup_unstack_select…`);
+      addLog('INFO', `Launching cup_unstack_select…`);
       setSelectMode(null);
       setTaskStatus('planning');
       setCycleIdx(0);
@@ -186,7 +194,6 @@ export default function App() {
       }
       return;
     }
-    addLog('INFO', `Pixel: (${px}, ${py})`);
   }
 
   // ── Command handler ──

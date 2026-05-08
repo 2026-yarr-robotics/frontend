@@ -299,10 +299,6 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               {[80, 160, 240].map(x => <line key={x} x1={x} y1="0" x2={x} y2="240"/>)}
               {[60, 120, 180].map(y => <line key={y} x1="0" y1={y} x2="320" y2={y}/>)}
             </g>
-            <circle cx="160" cy="155" r="40"
-              stroke="oklch(75% 0.18 200 / 0.5)" strokeWidth="1" fill="none" strokeDasharray="4 3"/>
-            <line x1="155" y1="155" x2="165" y2="155" stroke="oklch(75% 0.18 200 / 0.8)" strokeWidth="1"/>
-            <line x1="160" y1="150" x2="160" y2="160" stroke="oklch(75% 0.18 200 / 0.8)" strokeWidth="1"/>
           </svg>
         )}
 
