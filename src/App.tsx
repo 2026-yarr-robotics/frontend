@@ -46,7 +46,6 @@ export default function App() {
   const [cycleIdx, setCycleIdx] = useState(0);
   const [bringupActive, setBringupActive] = useState(false);
   const [robotOnline, setRobotOnline] = useState(false);
-  const [moveCartesianRunning, setMoveCartesianRunning] = useState(false);
   const [robotIp, setRobotIp] = useState('192.168.1.100');
   const [wsStatus, setWsStatus] = useState<'connecting' | 'live' | 'lost'>('connecting');
   const [lastDataTime, setLastDataTime] = useState<number>(0);
@@ -73,10 +72,6 @@ export default function App() {
     // Robot is online if joint states are actually flowing (works for external bringup too)
     setRobotOnline((data.joints?.position?.length ?? 0) > 0);
 
-    // Move commands are available only when move_cartesian service is running
-    const mcTask = data.tasks?.find((t: { name: string; status: string }) => t.name === 'move_cartesian');
-    setMoveCartesianRunning(mcTask?.status === 'running');
-
     if (data.ee_position) setEePosition(data.ee_position);
 
     const taskSt = data.task?.status;
@@ -91,7 +86,6 @@ export default function App() {
       if (Date.now() - lastDataTime > 2000 && wsStatus === 'live') {
         setWsStatus('lost');
         setRobotOnline(false);
-        setMoveCartesianRunning(false);
       }
     }, 500);
     return () => clearInterval(checkInterval);
