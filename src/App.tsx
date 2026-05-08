@@ -52,6 +52,7 @@ export default function App() {
   const [lastDataTime, setLastDataTime] = useState<number>(0);
   const [eePosition, setEePosition] = useState<EePosition | null>(null);
   const [selectMode, setSelectMode] = useState<SelectMode>(null);
+  const [cameraView, setCameraView] = useState<'both' | 'handtoeye' | 'handineye'>('both');
   const totalCycles = 6;
 
   function addLog(level: LogLevel, msg: string) {
@@ -302,21 +303,80 @@ export default function App() {
       <main className="dashboard-main">
         {/* Camera row — fills all available height */}
         <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0, position: 'relative' }}>
-          <CameraPanel
-            title="Eye-to-Hand"
-            topic="/fixed_camera/color/image_raw/compressed"
-            isActive={wsConnected}
-            isLive={wsConnected}
-            streamUrl="/ws/camera/handtoeye"
-          />
-          <CameraPanel
-            title="Eye-in-Hand"
-            topic="/camera/eye_in_hand/image_raw"
-            isActive={wsConnected}
-            isLive={wsConnected}
-            streamUrl="/ws/camera/handineye"
-            onClickFeed={handleCameraClick}
-          />
+          {cameraView !== 'handineye' && (
+            <CameraPanel
+              title="Eye-to-Hand"
+              topic="/fixed_camera/color/image_raw/compressed"
+              isActive={wsConnected}
+              isLive={wsConnected}
+              streamUrl="/ws/camera/handtoeye"
+            />
+          )}
+          {cameraView !== 'handtoeye' && (
+            <CameraPanel
+              title="Eye-in-Hand"
+              topic="/camera/eye_in_hand/image_raw"
+              isActive={wsConnected}
+              isLive={wsConnected}
+              streamUrl="/ws/camera/handineye"
+              onClickFeed={handleCameraClick}
+            />
+          )}
+
+          {/* Camera view selector */}
+          <div style={{
+            position: 'absolute', top: 8, right: 8,
+            display: 'flex', gap: 2,
+            background: 'var(--color-bg-surface-1)',
+            border: '1px solid var(--color-border-default)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 2,
+            zIndex: 10,
+          }}>
+            {([
+              { key: 'both',      label: 'Both',    icon: (
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                  <rect x="0.5" y="0.5" width="5.5" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                  <rect x="8" y="0.5" width="5.5" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                </svg>
+              )},
+              { key: 'handtoeye', label: 'Eye-to-Hand', icon: (
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                  <rect x="0.5" y="0.5" width="8" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                  <rect x="10.5" y="0.5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1"/>
+                </svg>
+              )},
+              { key: 'handineye', label: 'Eye-in-Hand', icon: (
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                  <rect x="0.5" y="0.5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1"/>
+                  <rect x="5.5" y="0.5" width="8" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                </svg>
+              )},
+            ] as const).map(({ key, label, icon }) => (
+              <button
+                key={key}
+                title={label}
+                onClick={() => setCameraView(key)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 28, height: 24,
+                  borderRadius: 'calc(var(--radius-sm) - 2px)',
+                  border: 'none',
+                  background: cameraView === key
+                    ? 'oklch(75% 0.18 200 / 0.2)'
+                    : 'transparent',
+                  color: cameraView === key
+                    ? 'var(--color-cyan)'
+                    : 'var(--color-text-tertiary)',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+
           {selectMode && (
             <div style={{
               position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
