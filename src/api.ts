@@ -1,7 +1,18 @@
-const BASE = import.meta.env.VITE_API_BASE_URL ?? window.location.origin;
+const LS_KEY = 'cup_api_base';
+
+export function getBaseUrl(): string {
+  return localStorage.getItem(LS_KEY)
+    ?? (import.meta.env.VITE_API_BASE_URL as string | undefined)
+    ?? 'https://yarr-api.simplyimg.com';
+}
+
+export function setBaseUrl(url: string) {
+  if (url) localStorage.setItem(LS_KEY, url);
+  else localStorage.removeItem(LS_KEY);
+}
 
 async function post<T = unknown>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -14,7 +25,7 @@ async function post<T = unknown>(path: string, body: unknown): Promise<T> {
 }
 
 async function get<T = unknown>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(`${getBaseUrl()}${path}`);
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`${res.status}: ${detail}`);

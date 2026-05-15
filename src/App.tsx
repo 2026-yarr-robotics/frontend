@@ -10,7 +10,7 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, startTask, stopTask, gripperControl, pixelToWorld, type EePosition } from './api';
+import { startBringup, stopBringup, startTask, stopTask, gripperControl, pixelToWorld, getBaseUrl, setBaseUrl, type EePosition } from './api';
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
@@ -52,6 +52,7 @@ export default function App() {
   const [eePosition, setEePosition] = useState<EePosition | null>(null);
   const [selectMode, setSelectMode] = useState<SelectMode>(null);
   const [cameraView, setCameraView] = useState<'both' | 'handtoeye' | 'handineye'>('both');
+  const [baseUrl, setBaseUrlState] = useState(() => getBaseUrl());
   const totalCycles = 6;
 
   function addLog(level: LogLevel, msg: string) {
@@ -222,6 +223,12 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wsConnected, bringupActive]);
 
+  function handleChangeBaseUrl(url: string) {
+    setBaseUrl(url);
+    setBaseUrlState(url);
+    window.location.reload();
+  }
+
   function handleAbort() {
     stopTask('cup_pyramid_select').catch(() => {});
     stopTask('cup_unstack_select').catch(() => {});
@@ -243,12 +250,14 @@ export default function App() {
         bringupActive={bringupActive}
         robotOnline={robotOnline}
         robotIp={robotIp}
+        baseUrl={baseUrl}
         rightPanelOpen={rightPanelOpen}
         onToggleSidebar={() => setSidebarOpen(o => !o)}
         onToggleRightPanel={() => setRightPanelOpen(o => !o)}
         onAbort={handleAbort}
         onToggleBringup={toggleBringup}
         onChangeRobotIp={setRobotIp}
+        onChangeBaseUrl={handleChangeBaseUrl}
       />
 
       {/* ── Sidebar ── */}

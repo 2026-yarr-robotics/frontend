@@ -35,12 +35,14 @@ export interface HeaderProps {
   bringupActive: boolean;
   robotOnline: boolean;
   robotIp: string;
+  baseUrl: string;
   rightPanelOpen: boolean;
   onToggleSidebar: () => void;
   onToggleRightPanel: () => void;
   onAbort: () => void;
   onToggleBringup: () => void;
   onChangeRobotIp: (ip: string) => void;
+  onChangeBaseUrl: (url: string) => void;
 }
 
 export default function Header({
@@ -51,19 +53,23 @@ export default function Header({
   bringupActive,
   robotOnline,
   robotIp,
+  baseUrl,
   rightPanelOpen,
   onToggleSidebar,
   onToggleRightPanel,
   onAbort,
   onToggleBringup,
   onChangeRobotIp,
+  onChangeBaseUrl,
 }: HeaderProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [ipDraft, setIpDraft] = useState(robotIp);
+  const [baseUrlDraft, setBaseUrlDraft] = useState(baseUrl);
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  // Keep draft in sync when prop changes externally
+  // Keep drafts in sync when props change externally
   useEffect(() => { setIpDraft(robotIp); }, [robotIp]);
+  useEffect(() => { setBaseUrlDraft(baseUrl); }, [baseUrl]);
 
   // Close settings panel on outside click
   useEffect(() => {
@@ -234,6 +240,49 @@ export default function Header({
                 Settings
               </div>
 
+              {/* API Base URL */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={{
+                  display: 'block', fontFamily: 'var(--font-ui)', fontSize: 11,
+                  color: 'var(--color-text-secondary)', marginBottom: 4,
+                }}>
+                  API Base URL
+                </label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={baseUrlDraft}
+                    onChange={e => setBaseUrlDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        onChangeBaseUrl(baseUrlDraft.trim());
+                        setShowSettings(false);
+                      }
+                    }}
+                    placeholder="http://localhost:8000"
+                    style={{
+                      flex: 1,
+                      background: 'var(--color-bg-surface-2)',
+                      border: '1px solid var(--color-border-default)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '5px 8px',
+                      fontFamily: 'var(--font-mono)', fontSize: 12,
+                      color: 'var(--color-text-primary)',
+                      outline: 'none',
+                    }}
+                    onFocus={e => { e.target.style.borderColor = 'var(--color-cyan)'; }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--color-border-default)'; }}
+                  />
+                  <button
+                    className="ds-btn primary sm"
+                    onClick={() => { onChangeBaseUrl(baseUrlDraft.trim()); setShowSettings(false); }}
+                    disabled={!baseUrlDraft.trim()}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+
               {/* Robot IP */}
               <div style={{ marginBottom: 10 }}>
                 <label style={{
@@ -283,7 +332,7 @@ export default function Header({
                 borderTop: '1px solid var(--color-border-subtle)', paddingTop: 8,
                 fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-disabled)',
               }}>
-                Current: {robotIp}
+                Robot: {robotIp}
               </div>
             </div>
           )}
