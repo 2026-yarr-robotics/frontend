@@ -248,6 +248,34 @@ export default function Header({
                 }}>
                   API Base URL
                 </label>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                  {[
+                    { label: 'yarr-api', url: 'https://yarr-api.simplyimg.com' },
+                    { label: 'yarr-api-24', url: 'https://yarr-api-24.simplyimg.com' },
+                  ].map(({ label, url }) => {
+                    const active = baseUrlDraft === url;
+                    return (
+                      <button
+                        key={url}
+                        onClick={() => { onChangeBaseUrl(url); setShowSettings(false); }}
+                        style={{
+                          fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                          padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                          border: active
+                            ? '1px solid oklch(75% 0.18 200 / 0.6)'
+                            : '1px solid var(--color-border-default)',
+                          background: active
+                            ? 'oklch(75% 0.18 200 / 0.15)'
+                            : 'var(--color-bg-surface-2)',
+                          color: active ? 'var(--color-cyan)' : 'var(--color-text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input
                     type="text"
