@@ -21,7 +21,8 @@ const DEFAULT_LIMITS: WorkspaceLimits = {
   grid_spacing: 0.05,
 };
 
-const STEP = 0.01;
+const STEP_OPTIONS = [0.005, 0.01, 0.05] as const;
+type StepOption = typeof STEP_OPTIONS[number];
 const LARGE_MOVE_MM = 50;
 
 function fmtM(v: number) { return v.toFixed(3); }
@@ -51,6 +52,7 @@ export default function ManualControl({
   const [devMode, setDevMode] = useState(false);
   const [editing, setEditing] = useState<'x' | 'y' | 'z' | null>(null);
   const [editVal, setEditVal] = useState('');
+  const [step, setStep] = useState<StepOption>(0.01);
   const [confirmHome, setConfirmHome] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const initializedRef = useRef(false);
@@ -111,12 +113,12 @@ export default function ManualControl({
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (editing) return;
     const actions: Record<string, () => void> = {
-      ArrowUp:    () => handleRelativeMove('y', STEP),
-      ArrowDown:  () => handleRelativeMove('y', -STEP),
-      ArrowLeft:  () => handleRelativeMove('x', -STEP),
-      ArrowRight: () => handleRelativeMove('x', STEP),
-      PageUp:     () => handleRelativeMove('z', STEP),
-      PageDown:   () => handleRelativeMove('z', -STEP),
+      ArrowUp:    () => handleRelativeMove('y', step),
+      ArrowDown:  () => handleRelativeMove('y', -step),
+      ArrowLeft:  () => handleRelativeMove('x', -step),
+      ArrowRight: () => handleRelativeMove('x', step),
+      PageUp:     () => handleRelativeMove('z', step),
+      PageDown:   () => handleRelativeMove('z', -step),
     };
     const action = actions[e.key];
     if (action) { e.preventDefault(); action(); }
@@ -359,24 +361,42 @@ export default function ManualControl({
 
         {/* ── Jog: step from actual position ── */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
               color: 'var(--color-text-secondary)' }}>
-              Jog (±{STEP * 1000}mm)
+              Jog
             </span>
+            <div style={{ display: 'flex', gap: 2 }}>
+              {STEP_OPTIONS.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStep(s)}
+                  style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 9, padding: '2px 6px',
+                    borderRadius: 'var(--radius-sm)', border: '1px solid',
+                    cursor: 'pointer',
+                    background: step === s ? 'var(--color-cyan)' : 'transparent',
+                    borderColor: step === s ? 'var(--color-cyan)' : 'var(--color-border-default)',
+                    color: step === s ? 'var(--color-bg-base)' : 'var(--color-text-tertiary)',
+                  }}
+                >
+                  {parseFloat((s * 100).toFixed(1))}cm
+                </button>
+              ))}
+            </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
-              color: 'var(--color-text-disabled)' }}>
+              color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
               ↑↓←→ · PgUp/PgDn(Z)
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 4, maxWidth: 160, margin: '0 auto' }}>
             <div />
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', STEP)}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', step)}
               disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↑</button>
             <div />
 
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', -STEP)}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', -step)}
               disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>←</button>
             <button
               className={`ds-btn sm ${confirmHome ? 'danger' : 'primary'}`}
@@ -387,16 +407,16 @@ export default function ManualControl({
             >
               {confirmHome ? 'Sure?' : '⌂'}
             </button>
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', STEP)}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('x', step)}
               disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>→</button>
 
             <div />
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', -STEP)}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('y', -step)}
               disabled={isDisabled} style={{ width: '100%', justifyContent: 'center' }}>↓</button>
             <div />
 
             {/* Z row — −Z left, +Z right */}
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', -STEP)}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', -step)}
               disabled={isDisabled} title="-Z 5mm"
               style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>−Z</button>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -405,7 +425,7 @@ export default function ManualControl({
                 {eePosition ? fmtM(eePosition.z) : '—'}m
               </span>
             </div>
-            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', STEP)}
+            <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', step)}
               disabled={isDisabled} title="+Z 5mm"
               style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>+Z</button>
           </div>
