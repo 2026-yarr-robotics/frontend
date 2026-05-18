@@ -120,7 +120,9 @@ export default function App() {
   // ── Bringup toggle ──
   async function toggleBringup() {
     try {
-      if (bringupActive) {
+      // External bringup (robotOnline but not dashboard-tracked) is
+      // stoppable from here too; start only when nothing is running.
+      if (bringupActive || robotOnline) {
         addLog('INFO', 'Stopping bringup…');
         await stopBringup();
         addLog('OK', 'Bringup stopped');

@@ -142,19 +142,15 @@ export default function Header({
             ■ Stop Bringup
           </button>
         ) : robotOnline ? (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '3px 10px', borderRadius: 'var(--radius-sm)',
-            border: '1px solid oklch(68% 0.18 145 / 0.35)',
-            background: 'oklch(68% 0.18 145 / 0.08)',
-            fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-            color: 'var(--color-green)',
-          }}
-            title="Bringup running externally (started outside dashboard)"
+          <button
+            className="ds-btn danger sm"
+            onClick={onToggleBringup}
+            disabled={!rosConnected}
+            title="Bringup running externally (started outside the dashboard) — click to stop"
           >
-            <span className="status-dot live" />
-            Running
-          </div>
+            <span className="status-dot live" style={{ marginRight: 5 }} />
+            ■ Stop Bringup
+          </button>
         ) : (
           <button
             className="ds-btn secondary sm"
