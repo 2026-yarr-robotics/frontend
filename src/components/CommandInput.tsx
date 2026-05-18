@@ -89,13 +89,13 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             </div>
             <div>
               <code style={{ color: 'var(--color-cyan)' }}>pick &lt;x&gt; &lt;y&gt; &lt;z&gt;</code>
-              {'  '}— x·y·z = 컵 <strong>바닥 중앙</strong> 좌표 (base_link, m)
+              {'  '}— x·y·z = 컵 <strong>윗면 중앙</strong> 좌표 (base_link, m)
             </div>
             <div>예시: <code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12 0.05</code></div>
             <ul style={{ margin: '2px 0 0', paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
               <li>로봇이 online일 때만 실행 (offline이면 경고만 표시)</li>
               <li>좌표 3개 미만이면 사용법만 출력 — 로봇 무동작</li>
-              <li>z는 서버에서 그리퍼 Z로 변환 (cup_bottom_z + grip offset)</li>
+              <li>z는 서버에서 그리퍼 Z로 변환 (cup_top_z + grip offset)</li>
               <li><kbd>↑</kbd>/<kbd>↓</kbd> 로 명령 히스토리 탐색</li>
             </ul>
             <a

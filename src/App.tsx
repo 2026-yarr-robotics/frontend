@@ -139,7 +139,7 @@ export default function App() {
 
   // ── Command handler ──
   // Pick-one runs purely from the command box (no camera/pixel needed):
-  //   pick <x> <y> <z>   where x,y,z = cup bottom-centre (base_link, m)
+  //   pick <x> <y> <z>   where x,y,z = cup top-centre (base_link, m)
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
@@ -150,7 +150,7 @@ export default function App() {
 
     const nums = (cmd.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
     if (nums.length < 3) {
-      addLog('WARN', 'Usage: pick <x> <y> <z> — 컵 바닥 중앙 base_link 좌표(m). 예: pick 0.45 -0.12 0.05');
+      addLog('WARN', 'Usage: pick <x> <y> <z> — 컵 윗면 중앙 base_link 좌표(m). 예: pick 0.45 -0.12 0.05');
       return;
     }
     if (!wsConnected || !robotOnline) {
@@ -159,7 +159,7 @@ export default function App() {
     }
 
     const [x, y, z] = nums;
-    addLog('INFO', `Picking cup at cup-bottom centre (${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})…`);
+    addLog('INFO', `Picking cup at cup-top centre (${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})…`);
     setTaskStatus('executing');
     try {
       const r = await pickOne(x, y, z);

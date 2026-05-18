@@ -110,16 +110,16 @@ export interface PickSkillResponse {
 }
 
 /**
- * Pick one cup. Coordinates are the **cup bottom centre** (base_link, m).
- * `cupBottomZ` is converted to gripper Z server-side (+ cup_grip_z_offset).
+ * Pick one cup. Coordinates are the **cup top centre** (base_link, m).
+ * `cupTopZ` is converted to gripper Z server-side (+ cup_grip_z_offset).
  */
 export async function pickOne(
   x: number,
   y: number,
-  cupBottomZ: number,
+  cupTopZ: number,
   ori?: { x: number; y: number; z: number; w: number },
 ): Promise<PickSkillResponse> {
   return post<PickSkillResponse>('/api/robot/skill/pick', {
-    x, y, cup_bottom_z: cupBottomZ, ...(ori ? { ori } : {}),
+    x, y, cup_top_z: cupTopZ, ...(ori ? { ori } : {}),
   });
 }
