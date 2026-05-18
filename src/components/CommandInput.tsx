@@ -127,7 +127,7 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             onChange={e => { setValue(e.target.value); setHistIdx(-1); }}
             onKeyDown={handleKey}
             disabled={disabled}
-            placeholder="pick <x> <y> <z> — cup bottom centre (m), e.g. pick 0.45 -0.12 0.05"
+            placeholder="Enter a command — see ? Help"
             style={{
               flex: 1,
               background: 'var(--color-bg-surface-2)',
