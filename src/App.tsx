@@ -18,6 +18,7 @@ interface RobotState {
   bringup: { name: string | null; status: string };
   tasks: { name: string; command: string; status: string; pid: number | null }[];
   ee_position?: EePosition | null;
+  gripper?: { width_mm: number | null } | null;
 }
 
 interface TaskLog {
@@ -40,7 +41,7 @@ export default function App() {
     { time: now(), level: 'INFO', msg: 'Dashboard loaded — connecting to server…' },
   ]);
   const [joints, setJoints] = useState<number[]>(DEFAULT_JOINTS);
-  const [gripperMm] = useState(75);
+  const [gripperMm, setGripperMm] = useState<number | null>(null);
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('idle');
   const [cycleIdx] = useState(0);
   const [bringupActive, setBringupActive] = useState(false);
@@ -77,6 +78,7 @@ export default function App() {
     const hasJoints = (data.joints?.position?.length ?? 0) > 0;
     setRobotOnline(hasJoints && !!data.ee_position);
     setEePosition(data.ee_position ?? null);
+    setGripperMm(data.gripper?.width_mm ?? null);
 
     const taskSt = data.task?.status;
     if (taskSt === 'running') setTaskStatus('executing');

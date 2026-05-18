@@ -4,7 +4,7 @@ import { getWorkspaceLimits, moveRobot, gripperControl, getEePosition, type Work
 interface ManualControlProps {
   disabled?: boolean;
   eePosition?: EePosition | null;
-  gripperMm?: number;
+  gripperMm?: number | null;
   connected?: boolean;
   onMoveStart?: () => void;
   onMoveEnd?: () => void;
