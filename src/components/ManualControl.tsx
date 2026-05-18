@@ -128,8 +128,8 @@ export default function ManualControl({
       a:          () => handleRelativeMove('x', -step),
       d:          () => handleRelativeMove('x', step),
       // Q/E — Z
-      q:          () => handleRelativeMove('z', step),
-      e:          () => handleRelativeMove('z', -step),
+      q:          () => handleRelativeMove('z', -step),
+      e:          () => handleRelativeMove('z', step),
       // 방향키 (보조)
       ArrowUp:    () => handleRelativeMove('y', step),
       ArrowDown:  () => handleRelativeMove('y', -step),
