@@ -81,7 +81,7 @@ export default function ManualControl({
     ? Math.max(Math.abs(delta.x), Math.abs(delta.y), Math.abs(delta.z)) * 1000
     : 0;
   const isLargeMove = maxDeltaMm > LARGE_MOVE_MM;
-  const hasPendingMove = !!delta && maxDeltaMm > 1;
+  const hasPendingMove = delta ? maxDeltaMm > 1 : true;
 
   function clamp(v: number, min: number, max: number) {
     return Math.max(min, Math.min(max, v));
@@ -92,7 +92,10 @@ export default function ManualControl({
     setError(null);
     onMoveStart?.();
     try {
-      await moveRobot(pos.x, pos.y, pos.z, 'absolute');
+      const res = await moveRobot(pos.x, pos.y, pos.z, 'absolute');
+      if (res.success === false) {
+        throw new Error(res.message ?? 'Move failed');
+      }
     } catch (e: any) {
       setError(`Move failed: ${e.message}`);
     } finally {
