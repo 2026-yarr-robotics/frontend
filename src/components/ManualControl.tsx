@@ -21,7 +21,7 @@ const DEFAULT_LIMITS: WorkspaceLimits = {
   grid_spacing: 0.05,
 };
 
-const STEP_OPTIONS = [0.005, 0.01, 0.05] as const;
+const STEP_OPTIONS = [0.005, 0.01, 0.05, 0.1] as const;
 type StepOption = typeof STEP_OPTIONS[number];
 const LARGE_MOVE_MM = 50;
 
