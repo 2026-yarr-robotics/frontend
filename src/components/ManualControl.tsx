@@ -27,6 +27,14 @@ const STEP_OPTIONS = [0.005, 0.01, 0.05, 0.1] as const;
 type StepOption = typeof STEP_OPTIONS[number];
 const LARGE_MOVE_MM = 50;
 
+// Cartesian "park" pose for the HOME button (base_link, m).
+// NOT the workflow joint HOME (server exposes no /home endpoint; task allowlist
+// blocks a home task). The old (0,0,0.4) is the base origin — a move_line
+// singularity the Doosan controller rejects. This sits in front of the robot,
+// near the live EE (~0.50, 0.04, 0.43), well inside the server AABB
+// (x/y ∈ [-0.5,0.5], z ∈ [0.25,0.55]) so it stays reachable.
+const HOME_POSE = { x: 0.45, y: 0.0, z: 0.45 } as const;
+
 function fmtM(v: number) { return v.toFixed(3); }
 function fmtDelta(d: number) {
   const mm = d * 1000;
@@ -48,7 +56,7 @@ export default function ManualControl({
   onMoveEnd,
 }: ManualControlProps) {
   const [limits, setLimits] = useState<WorkspaceLimits | null>(null);
-  const [target, setTarget] = useState<Position>({ x: 0, y: 0, z: 0.4 });
+  const [target, setTarget] = useState<Position>({ ...HOME_POSE });
   const [moving, setMoving] = useState(false);
   const [gripperState, setGripperState] = useState<'open' | 'closed' | null>(null);
   const [gripperMoving, setGripperMoving] = useState(false);
@@ -175,7 +183,7 @@ export default function ManualControl({
     }
     clearTimeout(confirmTimerRef.current);
     setConfirmHome(false);
-    const home: Position = { x: 0, y: 0, z: 0.4 };
+    const home: Position = { ...HOME_POSE };
     setTarget(home);
     executeMove(home);
   }
@@ -440,7 +448,7 @@ export default function ManualControl({
               className={`ds-btn sm ${confirmHome ? 'danger' : 'primary'}`}
               onClick={pressHome}
               disabled={isDisabled}
-              title={confirmHome ? 'Press again to confirm home move' : 'HOME (0, 0, 0.4m) — press twice to confirm'}
+              title={confirmHome ? 'Press again to confirm home move' : `HOME (${HOME_POSE.x}, ${HOME_POSE.y}, ${HOME_POSE.z}m) — press twice to confirm`}
               style={{ width: '100%', justifyContent: 'center' }}
             >
               {confirmHome ? 'Sure?' : '⌂'}
