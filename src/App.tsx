@@ -49,7 +49,8 @@ export default function App() {
   const [wsStatus, setWsStatus] = useState<'connecting' | 'live' | 'lost'>('connecting');
   const [lastDataTime, setLastDataTime] = useState<number>(0);
   const [eePosition, setEePosition] = useState<EePosition | null>(null);
-  const [cameraView, setCameraView] = useState<'both' | 'handtoeye' | 'handineye'>('both');
+  // exo = eye-to-hand (fixed/external camera) · hand = eye-in-hand (EE-mounted)
+  const [cameraView, setCameraView] = useState<'both' | 'exo' | 'hand'>('both');
   const [baseUrl, setBaseUrlState] = useState(() => getBaseUrl());
   const totalCycles = 6;
 
@@ -244,22 +245,22 @@ export default function App() {
       <main className="dashboard-main">
         {/* Camera row — fills all available height */}
         <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0, position: 'relative' }}>
-          {cameraView !== 'handineye' && (
+          {cameraView !== 'hand' && (
             <CameraPanel
               title="Eye-to-Hand"
-              topic="/fixed_camera/color/image_raw/compressed"
+              topic="/exo/exo/color/image_raw"
               isActive={wsConnected}
               isLive={wsConnected}
-              streamUrl="/ws/camera/handtoeye"
+              streamUrl="/ws/camera/exo"
             />
           )}
-          {cameraView !== 'handtoeye' && (
+          {cameraView !== 'exo' && (
             <CameraPanel
               title="Eye-in-Hand"
-              topic="/camera/eye_in_hand/image_raw"
+              topic="/hand/hand/color/image_raw"
               isActive={wsConnected}
               isLive={wsConnected}
-              streamUrl="/ws/camera/handineye"
+              streamUrl="/ws/camera/hand"
               objectFit="contain"
             />
           )}
@@ -281,13 +282,13 @@ export default function App() {
                   <rect x="8" y="0.5" width="5.5" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
                 </svg>
               )},
-              { key: 'handtoeye', label: 'Eye-to-Hand', icon: (
+              { key: 'exo', label: 'Eye-to-Hand', icon: (
                 <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
                   <rect x="0.5" y="0.5" width="8" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
                   <rect x="10.5" y="0.5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1"/>
                 </svg>
               )},
-              { key: 'handineye', label: 'Eye-in-Hand', icon: (
+              { key: 'hand', label: 'Eye-in-Hand', icon: (
                 <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
                   <rect x="0.5" y="0.5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1"/>
                   <rect x="5.5" y="0.5" width="8" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>

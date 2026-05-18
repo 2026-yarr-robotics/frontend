@@ -10,7 +10,7 @@ export interface CameraPanelProps {
   coords?: string;
   fps?: number;
   width?: number;
-  /** WebSocket path for MJPG binary frames (e.g. "/ws/camera/handineye") */
+  /** WebSocket path for MJPG binary frames (e.g. "/ws/camera/hand") */
   streamUrl?: string;
   /** 'cover' (default, fills panel) or 'contain' (show full image with letterbox) */
   objectFit?: 'cover' | 'contain';
