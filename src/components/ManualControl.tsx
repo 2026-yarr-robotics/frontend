@@ -115,18 +115,32 @@ export default function ManualControl({
     setStep(STEP_OPTIONS[(idx + 1) % STEP_OPTIONS.length]);
   }
 
+  function toggleGripper() {
+    handleGripper(gripperState === 'open' ? 'close' : 'open');
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (editing) return;
     const actions: Record<string, () => void> = {
+      // WASD — XY
+      w:          () => handleRelativeMove('y', step),
+      s:          () => handleRelativeMove('y', -step),
+      a:          () => handleRelativeMove('x', -step),
+      d:          () => handleRelativeMove('x', step),
+      // Q/E — Z
+      q:          () => handleRelativeMove('z', step),
+      e:          () => handleRelativeMove('z', -step),
+      // 방향키 (보조)
       ArrowUp:    () => handleRelativeMove('y', step),
       ArrowDown:  () => handleRelativeMove('y', -step),
       ArrowLeft:  () => handleRelativeMove('x', -step),
       ArrowRight: () => handleRelativeMove('x', step),
       PageUp:     () => handleRelativeMove('z', step),
       PageDown:   () => handleRelativeMove('z', -step),
-      s:          () => cycleStep(),
-      o:          () => handleGripper('open'),
-      c:          () => handleGripper('close'),
+      // Step 순환
+      '[':        () => cycleStep(),
+      // 그리퍼 토글
+      ' ':        () => toggleGripper(),
     };
     const action = actions[e.key];
     if (action) { e.preventDefault(); action(); }
@@ -394,7 +408,7 @@ export default function ManualControl({
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
               color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
-              ↑↓←→ · PgUp/PgDn(Z) · <kbd style={{ opacity: 0.7 }}>S</kbd>
+              WASD · Q/E(Z) · <kbd style={{ opacity: 0.7 }}>[</kbd> step
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
@@ -450,7 +464,7 @@ export default function ManualControl({
             </span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
               color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
-              <kbd style={{ opacity: 0.7 }}>O</kbd> open · <kbd style={{ opacity: 0.7 }}>C</kbd> close
+              <kbd style={{ opacity: 0.7 }}>Space</kbd> toggle
             </span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
