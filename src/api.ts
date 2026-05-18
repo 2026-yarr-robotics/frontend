@@ -102,3 +102,24 @@ export interface WorldCoord {
 export async function pixelToWorld(px: number, py: number): Promise<WorldCoord> {
   return get<WorldCoord>(`/api/robot/pixel-to-world?px=${px}&py=${py}`);
 }
+
+export interface PickSkillResponse {
+  success: boolean;
+  skill: string;
+  detail: string;
+}
+
+/**
+ * Pick one cup. Coordinates are the **cup bottom centre** (base_link, m).
+ * `cupBottomZ` is converted to gripper Z server-side (+ cup_grip_z_offset).
+ */
+export async function pickOne(
+  x: number,
+  y: number,
+  cupBottomZ: number,
+  ori?: { x: number; y: number; z: number; w: number },
+): Promise<PickSkillResponse> {
+  return post<PickSkillResponse>('/api/robot/skill/pick', {
+    x, y, cup_bottom_z: cupBottomZ, ...(ori ? { ori } : {}),
+  });
+}

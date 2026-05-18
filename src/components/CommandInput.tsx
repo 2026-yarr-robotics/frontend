@@ -1,15 +1,6 @@
 // CommandInput.tsx — Natural language command panel
 import { useState, useRef } from 'react';
 
-const SUGGESTIONS: string[] = [
-  'Stack cups into pyramid',
-  'Unstack pyramid',
-  'Move to HOME',
-  'Open gripper',
-  'Close gripper',
-  'Stop',
-];
-
 export interface CommandInputProps {
   onSend: (cmd: string) => void;
   disabled?: boolean;
@@ -77,7 +68,7 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             onChange={e => { setValue(e.target.value); setHistIdx(-1); }}
             onKeyDown={handleKey}
             disabled={disabled}
-            placeholder="e.g. Stack the cups into a 3-2-1 pyramid…"
+            placeholder="pick <x> <y> <z> — cup bottom centre (m), e.g. pick 0.45 -0.12 0.05"
             style={{
               flex: 1,
               background: 'var(--color-bg-surface-2)',
@@ -107,38 +98,6 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
           >
             Send ↵
           </button>
-        </div>
-
-        {/* Suggestion chips */}
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-          {SUGGESTIONS.map(s => (
-            <button
-              key={s}
-              onClick={() => submit(s)}
-              disabled={disabled}
-              style={{
-                padding: '3px 9px',
-                borderRadius: 'var(--radius-full)',
-                border: '1px solid var(--color-border-default)',
-                background: 'var(--color-bg-surface-2)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
-                color: 'var(--color-text-tertiary)',
-                cursor: 'pointer',
-                transition: 'border-color var(--transition-fast), color var(--transition-fast)',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'oklch(75% 0.18 200 / 0.5)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-cyan)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border-default)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-tertiary)';
-              }}
-            >
-              {s}
-            </button>
-          ))}
         </div>
       </div>
     </div>

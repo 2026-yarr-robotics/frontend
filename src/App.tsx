@@ -10,7 +10,7 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, stopTask, getBaseUrl, setBaseUrl, type EePosition } from './api';
+import { startBringup, stopBringup, pickOne, getBaseUrl, setBaseUrl, type EePosition } from './api';
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
@@ -134,27 +134,40 @@ export default function App() {
   const isRunning = taskStatus === 'planning' || taskStatus === 'executing';
 
   // ── Command handler ──
+  // Pick-one runs purely from the command box (no camera/pixel needed):
+  //   pick <x> <y> <z>   where x,y,z = cup bottom-centre (base_link, m)
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
+    if (!/pick/i.test(cmd)) {
+      addLog('WARN', `Unknown command: "${cmd}" — try "pick <x> <y> <z>"`);
+      return;
+    }
+
+    const nums = (cmd.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+    if (nums.length < 3) {
+      addLog('WARN', 'Usage: pick <x> <y> <z> — 컵 바닥 중앙 base_link 좌표(m). 예: pick 0.45 -0.12 0.05');
+      return;
+    }
+    if (!wsConnected || !robotOnline) {
+      addLog('WARN', 'Robot must be online to pick a cup');
+      return;
+    }
+
+    const [x, y, z] = nums;
+    addLog('INFO', `Picking cup at cup-bottom centre (${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})…`);
+    setTaskStatus('executing');
     try {
-      if (/stop/i.test(cmd)) {
-        addLog('WARN', 'Sending stop…');
-        await stopTask('cup_pyramid_select');
-        await stopTask('cup_unstack_select');
-        setTaskStatus('idle');
-        return;
-      }
-      if (/home/i.test(cmd)) {
-        addLog('INFO', 'Home command sent');
-        return;
-      }
-      addLog('WARN', `Unknown command: "${cmd}"`);
+      const r = await pickOne(x, y, z);
+      if (r.success) addLog('OK', `Pick complete — ${r.detail}`);
+      else addLog('ERR', `Pick failed — ${r.detail}`);
     } catch (e) {
-      addLog('ERR', (e as Error).message);
+      addLog('ERR', `Pick error: ${(e as Error).message}`);
+    } finally {
+      setTaskStatus('idle');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wsConnected, bringupActive]);
+  }, [wsConnected, robotOnline]);
 
   function handleChangeBaseUrl(url: string) {
     setBaseUrl(url);
@@ -163,10 +176,8 @@ export default function App() {
   }
 
   function handleAbort() {
-    stopTask('cup_pyramid_select').catch(() => {});
-    stopTask('cup_unstack_select').catch(() => {});
     setTaskStatus('error');
-    addLog('ERR', 'Task aborted by operator');
+    addLog('ERR', 'Aborted by operator');
   }
 
   const gridCols = `${sidebarOpen ? 'var(--sidebar-width)' : '0px'} 1fr ${rightPanelOpen ? 'var(--right-panel-width)' : '0px'}`;
