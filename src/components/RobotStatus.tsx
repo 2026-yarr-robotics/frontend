@@ -4,7 +4,6 @@ export type TaskStatus = 'idle' | 'planning' | 'executing' | 'complete' | 'error
 
 export interface RobotStatusProps {
   joints: number[];
-  gripperMm: number;
   taskStatus: TaskStatus;
   cycleIdx: number;
   totalCycles: number;
@@ -12,7 +11,7 @@ export interface RobotStatusProps {
   eePosition?: { x: number; y: number; z: number } | null;
 }
 
-export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, totalCycles, connected = true, eePosition }: RobotStatusProps) {
+export default function RobotStatus({ joints, taskStatus, cycleIdx, totalCycles, connected = true, eePosition }: RobotStatusProps) {
   const progress = totalCycles > 0 ? (cycleIdx / totalCycles) * 100 : 0;
 
   return (
@@ -42,35 +41,6 @@ export default function RobotStatus({ joints, gripperMm, taskStatus, cycleIdx, t
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Gripper */}
-      <div>
-        <div style={{
-          fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600,
-          letterSpacing: '0.1em', textTransform: 'uppercase',
-          color: 'var(--color-text-tertiary)', marginBottom: 5,
-        }}>
-          Gripper · RG2
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{
-            flex: 1, height: 5,
-            background: 'var(--color-bg-surface-2)',
-            borderRadius: 'var(--radius-full)', overflow: 'hidden',
-          }}>
-            <div style={{
-              height: '100%',
-              width: connected ? `${Math.min(gripperMm / 75 * 100, 100)}%` : '0%',
-              background: 'var(--color-amber)',
-              borderRadius: 'var(--radius-full)',
-              transition: 'width 300ms ease',
-            }} />
-          </div>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: connected ? 'var(--color-amber)' : 'var(--color-text-disabled)', minWidth: 46 }}>
-            {connected ? `${gripperMm.toFixed(1)} mm` : '— mm'}
-          </span>
         </div>
       </div>
 

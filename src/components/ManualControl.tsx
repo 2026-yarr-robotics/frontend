@@ -4,6 +4,8 @@ import { getWorkspaceLimits, moveRobot, gripperControl, getEePosition, type Work
 interface ManualControlProps {
   disabled?: boolean;
   eePosition?: EePosition | null;
+  gripperMm?: number;
+  connected?: boolean;
   onMoveStart?: () => void;
   onMoveEnd?: () => void;
 }
@@ -40,6 +42,8 @@ function deltaColor(d: number) {
 export default function ManualControl({
   disabled = false,
   eePosition,
+  gripperMm,
+  connected = true,
   onMoveStart,
   onMoveEnd,
 }: ManualControlProps) {
@@ -422,10 +426,6 @@ export default function ManualControl({
                 </button>
               ))}
             </div>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
-              color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
-              WASD · Q/E(Z) · <kbd style={{ opacity: 0.7 }}>T</kbd> step
-            </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 4, maxWidth: 160, margin: '0 auto' }}>
@@ -467,6 +467,15 @@ export default function ManualControl({
               disabled={isDisabled} title="+Z 5mm"
               style={{ width: '100%', justifyContent: 'center', fontSize: 10 }}>+Z</button>
           </div>
+          <div style={{
+            marginTop: 8, textAlign: 'center',
+            fontFamily: 'var(--font-mono)', fontSize: 9,
+            color: 'var(--color-text-disabled)', lineHeight: 1.6,
+          }}>
+            <kbd style={{ opacity: 0.7 }}>WASD</kbd> XY ·{' '}
+            <kbd style={{ opacity: 0.7 }}>Q</kbd>/<kbd style={{ opacity: 0.7 }}>E</kbd> Z ·{' '}
+            <kbd style={{ opacity: 0.7 }}>T</kbd> step
+          </div>
         </div>
 
         <div style={{ height: 1, background: 'var(--color-border-subtle)' }} />
@@ -481,6 +490,30 @@ export default function ManualControl({
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
               color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
               <kbd style={{ opacity: 0.7 }}>Space</kbd> toggle
+            </span>
+          </div>
+          {/* RG2 status — relocated above Open/Close (was in Robot Status) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
+              color: 'var(--color-text-tertiary)', minWidth: 26 }}>
+              RG2
+            </span>
+            <div style={{
+              flex: 1, height: 5,
+              background: 'var(--color-bg-surface-2)',
+              borderRadius: 'var(--radius-full)', overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                width: connected && gripperMm != null ? `${Math.min(gripperMm / 75 * 100, 100)}%` : '0%',
+                background: 'var(--color-amber)',
+                borderRadius: 'var(--radius-full)',
+                transition: 'width 300ms ease',
+              }} />
+            </div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, minWidth: 46,
+              color: connected && gripperMm != null ? 'var(--color-amber)' : 'var(--color-text-disabled)' }}>
+              {connected && gripperMm != null ? `${gripperMm.toFixed(1)} mm` : '— mm'}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

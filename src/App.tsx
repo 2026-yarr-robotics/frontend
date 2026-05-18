@@ -69,10 +69,14 @@ export default function App() {
 
     setBringupActive(data.bringup?.status === 'running');
 
-    // Robot is online if joint states are actually flowing (works for external bringup too)
-    setRobotOnline((data.joints?.position?.length ?? 0) > 0);
-
-    if (data.ee_position) setEePosition(data.ee_position);
+    // Online only when joints AND a fresh EE pose are present. The server
+    // nulls ee_position once /ee_pose (TF) is stale (>1s) — i.e. bringup
+    // terminated or data not received — so joint state / end-effector then
+    // render as 연결 안됨. (Works for external bringup too: it publishes
+    // /tf or /ee_pose.) A total WS silence is still caught by the 2s timer.
+    const hasJoints = (data.joints?.position?.length ?? 0) > 0;
+    setRobotOnline(hasJoints && !!data.ee_position);
+    setEePosition(data.ee_position ?? null);
 
     const taskSt = data.task?.status;
     if (taskSt === 'running') setTaskStatus('executing');
@@ -236,7 +240,6 @@ export default function App() {
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <RobotStatus
                 joints={joints}
-                gripperMm={gripperMm}
                 taskStatus={taskStatus}
                 cycleIdx={cycleIdx}
                 totalCycles={totalCycles}
@@ -246,6 +249,8 @@ export default function App() {
               <ManualControl
                 disabled={isRunning}
                 eePosition={eePosition}
+                gripperMm={gripperMm}
+                connected={robotOnline}
               />
             </div>
           </>
@@ -258,7 +263,7 @@ export default function App() {
         <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0, position: 'relative' }}>
           {cameraView !== 'hand' && (
             <CameraPanel
-              title="Eye-to-Hand"
+              title="exo"
               topic="/exo/exo/color/image_raw"
               isActive={wsConnected}
               isLive={wsConnected}
@@ -267,7 +272,7 @@ export default function App() {
           )}
           {cameraView !== 'exo' && (
             <CameraPanel
-              title="Eye-in-Hand"
+              title="hand"
               topic="/hand/hand/color/image_raw"
               isActive={wsConnected}
               isLive={wsConnected}
@@ -293,13 +298,13 @@ export default function App() {
                   <rect x="8" y="0.5" width="5.5" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
                 </svg>
               )},
-              { key: 'exo', label: 'Eye-to-Hand', icon: (
+              { key: 'exo', label: 'exo', icon: (
                 <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
                   <rect x="0.5" y="0.5" width="8" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
                   <rect x="10.5" y="0.5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1"/>
                 </svg>
               )},
-              { key: 'hand', label: 'Eye-in-Hand', icon: (
+              { key: 'hand', label: 'hand', icon: (
                 <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
                   <rect x="0.5" y="0.5" width="3" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1"/>
                   <rect x="5.5" y="0.5" width="8" height="9" rx="1" stroke="currentColor" strokeWidth="1.2"/>
