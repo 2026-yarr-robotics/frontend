@@ -10,7 +10,7 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, startTask, stopTask, gripperControl, pixelToWorld, getBaseUrl, setBaseUrl, type EePosition } from './api';
+import { startBringup, stopBringup, stopTask, getBaseUrl, setBaseUrl, type EePosition } from './api';
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
@@ -32,7 +32,6 @@ function now(): string {
 
 const DEFAULT_JOINTS = [0, -30, 90, 0, 90, 0];
 const BRINGUP_TASK = 'bringup_real';
-type SelectMode = null | 'stack' | 'unstack';
 
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -43,14 +42,13 @@ export default function App() {
   const [joints, setJoints] = useState<number[]>(DEFAULT_JOINTS);
   const [gripperMm] = useState(75);
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('idle');
-  const [cycleIdx, setCycleIdx] = useState(0);
+  const [cycleIdx] = useState(0);
   const [bringupActive, setBringupActive] = useState(false);
   const [robotOnline, setRobotOnline] = useState(false);
   const [robotIp, setRobotIp] = useState('192.168.1.100');
   const [wsStatus, setWsStatus] = useState<'connecting' | 'live' | 'lost'>('connecting');
   const [lastDataTime, setLastDataTime] = useState<number>(0);
   const [eePosition, setEePosition] = useState<EePosition | null>(null);
-  const [selectMode, setSelectMode] = useState<SelectMode>(null);
   const [cameraView, setCameraView] = useState<'both' | 'handtoeye' | 'handineye'>('both');
   const [baseUrl, setBaseUrlState] = useState(() => getBaseUrl());
   const totalCycles = 6;
@@ -134,63 +132,6 @@ export default function App() {
   const wsConnected = wsStatus === 'live';
   const isRunning = taskStatus === 'planning' || taskStatus === 'executing';
 
-  // ── Enter target selection mode ──
-  function requestStack() {
-    if (!wsConnected || !robotOnline) {
-      addLog('WARN', 'Robot must be online to use camera-guided tasks');
-      return;
-    }
-    setSelectMode('stack');
-    addLog('INFO', 'Click the nested cup stack on the Eye-in-Hand camera');
-  }
-
-  function requestUnstack() {
-    if (!wsConnected || !robotOnline) {
-      addLog('WARN', 'Robot must be online to use camera-guided tasks');
-      return;
-    }
-    setSelectMode('unstack');
-    addLog('INFO', 'Click the pyramid center on the Eye-in-Hand camera');
-  }
-
-  // ── Camera click → log world coords + launch web task ──
-  async function handleCameraClick({ px, py }: { px: number; py: number }) {
-    // Try to get world coordinates immediately for the log
-    try {
-      const w = await pixelToWorld(px, py);
-      addLog('INFO', `Pixel (${px}, ${py}) → world (${w.x.toFixed(3)}, ${w.y.toFixed(3)}, ${w.z.toFixed(3)}) depth=${w.depth_mm}mm`);
-    } catch {
-      addLog('INFO', `Pixel: (${px}, ${py})`);
-    }
-
-    if (selectMode === 'stack') {
-      addLog('INFO', `Launching cup_pyramid_select…`);
-      setSelectMode(null);
-      setTaskStatus('planning');
-      setCycleIdx(0);
-      try {
-        await startTask('cup_pyramid_select', { pixel_x: String(px), pixel_y: String(py) });
-      } catch (e) {
-        addLog('ERR', (e as Error).message);
-        setTaskStatus('idle');
-      }
-      return;
-    }
-    if (selectMode === 'unstack') {
-      addLog('INFO', `Launching cup_unstack_select…`);
-      setSelectMode(null);
-      setTaskStatus('planning');
-      setCycleIdx(0);
-      try {
-        await startTask('cup_unstack_select', { pixel_x: String(px), pixel_y: String(py) });
-      } catch (e) {
-        addLog('ERR', (e as Error).message);
-        setTaskStatus('idle');
-      }
-      return;
-    }
-  }
-
   // ── Command handler ──
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
@@ -201,19 +142,10 @@ export default function App() {
         await stopTask('cup_pyramid_select');
         await stopTask('cup_unstack_select');
         setTaskStatus('idle');
-        setSelectMode(null);
         return;
       }
       if (/home/i.test(cmd)) {
         addLog('INFO', 'Home command sent');
-        return;
-      }
-      if (/stack/i.test(cmd)) {
-        requestStack();
-        return;
-      }
-      if (/unstack/i.test(cmd)) {
-        requestUnstack();
         return;
       }
       addLog('WARN', `Unknown command: "${cmd}"`);
@@ -233,7 +165,6 @@ export default function App() {
     stopTask('cup_pyramid_select').catch(() => {});
     stopTask('cup_unstack_select').catch(() => {});
     setTaskStatus('error');
-    setSelectMode(null);
     addLog('ERR', 'Task aborted by operator');
   }
 
@@ -329,7 +260,6 @@ export default function App() {
               isActive={wsConnected}
               isLive={wsConnected}
               streamUrl="/ws/camera/handineye"
-              onClickFeed={handleCameraClick}
               objectFit="contain"
             />
           )}
@@ -387,22 +317,6 @@ export default function App() {
               </button>
             ))}
           </div>
-
-          {selectMode && (
-            <div style={{
-              position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-              padding: '6px 16px', borderRadius: 20,
-              background: selectMode === 'stack'
-                ? 'oklch(68% 0.18 145 / 0.9)'
-                : 'oklch(72% 0.18 55 / 0.9)',
-              fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, color: '#fff',
-              zIndex: 10, pointerEvents: 'none',
-            }}>
-              {selectMode === 'stack'
-                ? 'Click nested cup stack on camera'
-                : 'Click pyramid center on camera'}
-            </div>
-          )}
         </div>
       </main>
 

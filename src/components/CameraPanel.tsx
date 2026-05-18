@@ -1,4 +1,4 @@
-// CameraPanel.tsx — Live camera stream panel with crosshair overlay and capture
+// CameraPanel.tsx — Live camera stream panel with capture
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { wsUrl } from '../hooks/useWebSocket';
 
@@ -12,17 +12,8 @@ export interface CameraPanelProps {
   width?: number;
   /** WebSocket path for MJPG binary frames (e.g. "/ws/camera/handineye") */
   streamUrl?: string;
-  /** Called with actual pixel coordinates in the camera image */
-  onClickFeed?: (pos: { px: number; py: number }) => void;
   /** 'cover' (default, fills panel) or 'contain' (show full image with letterbox) */
   objectFit?: 'cover' | 'contain';
-}
-
-interface ClickPos {
-  px: number;
-  py: number;
-  displayX: number;
-  displayY: number;
 }
 
 interface Capture {
@@ -32,16 +23,14 @@ interface Capture {
   filename: string;
 }
 
-export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, streamUrl, onClickFeed, objectFit = 'cover' }: CameraPanelProps) {
+export default function CameraPanel({ title, topic, isActive, isLive, coords, fps, width, streamUrl, objectFit = 'cover' }: CameraPanelProps) {
   const [hovered, setHovered] = useState(false);
-  const [clickPos, setClickPos] = useState<ClickPos | null>(null);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [wsRef, setWsRef] = useState<WebSocket | null>(null);
   const [currentBlob, setCurrentBlob] = useState<Blob | null>(null);
   const [streamEnabled, setStreamEnabled] = useState(true);
   const prevUrlRef = useRef<string | null>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const captureIdRef = useRef(0);
@@ -92,42 +81,6 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
       setCurrentBlob(null);
     }
   }, [isLive, effectiveActive]);
-
-  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    const img = imgRef.current;
-    let px: number, py: number;
-    let displayX = clickX, displayY = clickY;
-
-    if (objectFit === 'contain' && img && img.naturalWidth > 0) {
-      // Compute rendered image rect within the container (letterbox-aware)
-      const natW = img.naturalWidth;
-      const natH = img.naturalHeight;
-      const scale = Math.min(rect.width / natW, rect.height / natH);
-      const rendW = natW * scale;
-      const rendH = natH * scale;
-      const offX = (rect.width - rendW) / 2;
-      const offY = (rect.height - rendH) / 2;
-      // Clamp to image area
-      const imgX = Math.max(0, Math.min(clickX - offX, rendW));
-      const imgY = Math.max(0, Math.min(clickY - offY, rendH));
-      px = Math.round(imgX / scale);
-      py = Math.round(imgY / scale);
-      displayX = offX + imgX;
-      displayY = offY + imgY;
-    } else {
-      const scaleX = img ? img.naturalWidth / rect.width : 1;
-      const scaleY = img ? img.naturalHeight / rect.height : 1;
-      px = Math.round(clickX * scaleX);
-      py = Math.round(clickY * scaleY);
-    }
-
-    setClickPos({ px, py, displayX, displayY });
-    onClickFeed?.({ px, py });
-  }
 
   function handleCapture() {
     if (!currentBlob) return;
@@ -238,13 +191,12 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
       <div
         style={{
           flex: 1, background: '#000', position: 'relative',
-          cursor: hasFeed ? 'crosshair' : 'default',
+          cursor: 'default',
           boxShadow: hasFeed ? 'inset 0 0 0 1px oklch(75% 0.18 200 / 0.4)' : 'none',
           minHeight: 0, overflow: 'hidden',
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onClick={hasFeed ? handleClick : undefined}
       >
         {/* Background */}
         <div style={{
@@ -305,7 +257,6 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         {/* Live camera image from WebSocket */}
         {hasFeed && (
           <img
-            ref={imgRef}
             src={imgUrl}
             alt={title}
             style={{
@@ -326,18 +277,6 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
               {[60, 120, 180].map(y => <line key={y} x1="0" y1={y} x2="320" y2={y}/>)}
             </g>
           </svg>
-        )}
-
-        {/* Click crosshair */}
-        {clickPos && hasFeed && (
-          <div style={{
-            position: 'absolute',
-            left: clickPos.displayX - 8, top: clickPos.displayY - 8,
-            width: 16, height: 16, pointerEvents: 'none',
-          }}>
-            <div style={{ position: 'absolute', left: '50%', top: 0, width: 1, height: '100%', background: 'var(--color-cyan)', transform: 'translateX(-50%)' }}/>
-            <div style={{ position: 'absolute', top: '50%', left: 0, height: 1, width: '100%', background: 'var(--color-cyan)', transform: 'translateY(-50%)' }}/>
-          </div>
         )}
 
         {/* Coordinate overlay */}
@@ -383,28 +322,6 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
           )}
         </button>
 
-        {/* Click hint */}
-        {hasFeed && hovered && !clickPos && (
-          <div style={{
-            position: 'absolute', top: 8, right: 8,
-            fontFamily: 'var(--font-mono)', fontSize: 9,
-            color: 'oklch(75% 0.18 200 / 0.7)',
-            background: 'rgba(13,15,20,0.7)', padding: '2px 6px', borderRadius: 3,
-          }}>
-            Click to select target
-          </div>
-        )}
-
-        {/* Clicked coordinate readout */}
-        {clickPos && hasFeed && (
-          <div style={{
-            position: 'absolute', bottom: 8, right: 8,
-            fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-cyan)',
-            background: 'rgba(13,15,20,0.75)', padding: '2px 6px', borderRadius: 3,
-          }}>
-            ({clickPos.px}, {clickPos.py})
-          </div>
-        )}
       </div>
 
       {/* Footer */}
@@ -416,9 +333,6 @@ export default function CameraPanel({ title, topic, isActive, isLive, coords, fp
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>
           {hasFeed ? `${width ?? 640}×480` : '—'}
         </span>
-        {clickPos && hasFeed && (
-          <button className="ds-btn ghost sm" onClick={() => setClickPos(null)}>Clear</button>
-        )}
       </div>
 
       {/* Captures thumbnails */}
