@@ -110,6 +110,11 @@ export default function ManualControl({
     executeMove(next);
   }
 
+  function cycleStep() {
+    const idx = STEP_OPTIONS.indexOf(step);
+    setStep(STEP_OPTIONS[(idx + 1) % STEP_OPTIONS.length]);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (editing) return;
     const actions: Record<string, () => void> = {
@@ -119,6 +124,9 @@ export default function ManualControl({
       ArrowRight: () => handleRelativeMove('x', step),
       PageUp:     () => handleRelativeMove('z', step),
       PageDown:   () => handleRelativeMove('z', -step),
+      s:          () => cycleStep(),
+      o:          () => handleGripper('open'),
+      c:          () => handleGripper('close'),
     };
     const action = actions[e.key];
     if (action) { e.preventDefault(); action(); }
@@ -386,7 +394,7 @@ export default function ManualControl({
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
               color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
-              ↑↓←→ · PgUp/PgDn(Z)
+              ↑↓←→ · PgUp/PgDn(Z) · <kbd style={{ opacity: 0.7 }}>S</kbd>
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
@@ -435,9 +443,15 @@ export default function ManualControl({
 
         {/* ── Gripper ── */}
         <div>
-          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-            color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-            Gripper
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
+              color: 'var(--color-text-secondary)' }}>
+              Gripper
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
+              color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
+              <kbd style={{ opacity: 0.7 }}>O</kbd> open · <kbd style={{ opacity: 0.7 }}>C</kbd> close
+            </span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
