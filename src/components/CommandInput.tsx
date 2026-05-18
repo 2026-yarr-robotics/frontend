@@ -1,5 +1,6 @@
 // CommandInput.tsx — Natural language command panel
 import { useState, useRef } from 'react';
+import { getBaseUrl } from '../api';
 
 export interface CommandInputProps {
   onSend: (cmd: string) => void;
@@ -10,7 +11,9 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [histIdx, setHistIdx] = useState(-1);
+  const [showHelp, setShowHelp] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const docsUrl = `${getBaseUrl()}/api/robot/docs`;
 
   function submit(text?: string) {
     const cmd = (text ?? value).trim();
@@ -51,14 +54,70 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
           </svg>
           <span className="ds-card-label">Command</span>
         </div>
-        {disabled && (
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>
-            task running…
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {disabled && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text-disabled)' }}>
+              task running…
+            </span>
+          )}
+          <button
+            className="ds-btn ghost sm"
+            onClick={() => setShowHelp(h => !h)}
+            aria-expanded={showHelp}
+            title="Command 사용법 / API 문서"
+            style={{ fontSize: 10, padding: '2px 8px' }}
+          >
+            {showHelp ? '× Close' : '? Help'}
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Help panel — pick usage + Swagger UI */}
+        {showHelp && (
+          <div style={{
+            background: 'var(--color-bg-surface-2)',
+            border: '1px solid var(--color-border-default)',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 12px',
+            fontFamily: 'var(--font-mono)', fontSize: 11, lineHeight: 1.5,
+            color: 'var(--color-text-secondary)',
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            <div style={{ fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 11, color: 'var(--color-text-primary)' }}>
+              Pick — 컵 한 개 집기
+            </div>
+            <div>
+              <code style={{ color: 'var(--color-cyan)' }}>pick &lt;x&gt; &lt;y&gt; &lt;z&gt;</code>
+              {'  '}— x·y·z = 컵 <strong>바닥 중앙</strong> 좌표 (base_link, m)
+            </div>
+            <div>예시: <code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12 0.05</code></div>
+            <ul style={{ margin: '2px 0 0', paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <li>로봇이 online일 때만 실행 (offline이면 경고만 표시)</li>
+              <li>좌표 3개 미만이면 사용법만 출력 — 로봇 무동작</li>
+              <li>z는 서버에서 그리퍼 Z로 변환 (cup_bottom_z + grip offset)</li>
+              <li><kbd>↑</kbd>/<kbd>↓</kbd> 로 명령 히스토리 탐색</li>
+            </ul>
+            <a
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                marginTop: 4, color: 'var(--color-cyan)', textDecoration: 'none',
+                display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11,
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              API 문서 · Swagger UI (/api/robot/docs) ↗
+            </a>
+          </div>
+        )}
+
         {/* Input row */}
         <div style={{ display: 'flex', gap: 8 }}>
           <input
