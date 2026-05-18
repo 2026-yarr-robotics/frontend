@@ -138,7 +138,7 @@ export default function ManualControl({
       PageUp:     () => handleRelativeMove('z', step),
       PageDown:   () => handleRelativeMove('z', -step),
       // Step 순환
-      '[':        () => cycleStep(),
+      t:          () => cycleStep(),
       // 그리퍼 토글
       ' ':        () => toggleGripper(),
     };
@@ -408,7 +408,7 @@ export default function ManualControl({
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
               color: 'var(--color-text-disabled)', marginLeft: 'auto' }}>
-              WASD · Q/E(Z) · <kbd style={{ opacity: 0.7 }}>[</kbd> step
+              WASD · Q/E(Z) · <kbd style={{ opacity: 0.7 }}>T</kbd> step
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
