@@ -21,7 +21,7 @@ const DEFAULT_LIMITS: WorkspaceLimits = {
   grid_spacing: 0.05,
 };
 
-const STEP = 0.005;
+const STEP = 0.01;
 const LARGE_MOVE_MM = 50;
 
 function fmtM(v: number) { return v.toFixed(3); }
@@ -106,6 +106,20 @@ export default function ManualControl({
     next[axis] = clamp(base[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
     setTarget(next);
     executeMove(next);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (editing) return;
+    const actions: Record<string, () => void> = {
+      ArrowUp:    () => handleRelativeMove('y', STEP),
+      ArrowDown:  () => handleRelativeMove('y', -STEP),
+      ArrowLeft:  () => handleRelativeMove('x', -STEP),
+      ArrowRight: () => handleRelativeMove('x', STEP),
+      PageUp:     () => handleRelativeMove('z', STEP),
+      PageDown:   () => handleRelativeMove('z', -STEP),
+    };
+    const action = actions[e.key];
+    if (action) { e.preventDefault(); action(); }
   }
 
   function pressHome() {
@@ -209,7 +223,12 @@ export default function ManualControl({
   }
 
   return (
-    <div className="ds-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div
+      className="ds-card"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, outline: 'none' }}
+    >
       <div className="ds-card-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -340,9 +359,15 @@ export default function ManualControl({
 
         {/* ── Jog: step from actual position ── */}
         <div>
-          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
-            color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-            Jog (±{STEP * 1000}mm)
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
+              color: 'var(--color-text-secondary)' }}>
+              Jog (±{STEP * 1000}mm)
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
+              color: 'var(--color-text-disabled)' }}>
+              ↑↓←→ · PgUp/PgDn(Z)
+            </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 4, maxWidth: 160, margin: '0 auto' }}>
