@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getWorkspaceLimits, moveRobot, gripperControl, type WorkspaceLimits, type EePosition } from '../api';
+import { getWorkspaceLimits, moveRobot, gripperControl, getEePosition, type WorkspaceLimits, type EePosition } from '../api';
 
 interface ManualControlProps {
   disabled?: boolean;
@@ -56,6 +56,7 @@ export default function ManualControl({
   const [confirmHome, setConfirmHome] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const initializedRef = useRef(false);
+  const [restPos, setRestPos] = useState<EePosition | null>(null);
 
   useEffect(() => {
     getWorkspaceLimits().then(setLimits).catch(e => setError(`Limits: ${e.message}`));
@@ -63,18 +64,30 @@ export default function ManualControl({
 
   const effectiveLimits = limits ?? (devMode ? DEFAULT_LIMITS : null);
 
+  // REST fallback — keeps ACTUAL/Δ and controls usable even when /ws/robot/state is unavailable
   useEffect(() => {
-    if (!eePosition || initializedRef.current) return;
-    initializedRef.current = true;
-    setTarget({ x: eePosition.x, y: eePosition.y, z: eePosition.z });
+    if (eePosition) return;
+    let cancelled = false;
+    const poll = () => { getEePosition().then(p => { if (!cancelled) setRestPos(p); }).catch(() => {}); };
+    poll();
+    const id = setInterval(poll, 1500);
+    return () => { cancelled = true; clearInterval(id); };
   }, [eePosition]);
+
+  const livePos = eePosition ?? restPos;
+
+  useEffect(() => {
+    if (!livePos || initializedRef.current) return;
+    initializedRef.current = true;
+    setTarget({ x: livePos.x, y: livePos.y, z: livePos.z });
+  }, [livePos]);
 
   useEffect(() => () => clearTimeout(confirmTimerRef.current), []);
 
   const isDisabled = moving || (!devMode && disabled);
 
-  const delta = eePosition
-    ? { x: target.x - eePosition.x, y: target.y - eePosition.y, z: target.z - eePosition.z }
+  const delta = livePos
+    ? { x: target.x - livePos.x, y: target.y - livePos.y, z: target.z - livePos.z }
     : null;
 
   const maxDeltaMm = delta
@@ -106,7 +119,7 @@ export default function ManualControl({
 
   function handleRelativeMove(axis: 'x' | 'y' | 'z', d: number) {
     if (!effectiveLimits || isDisabled) return;
-    const base = eePosition ?? target;
+    const base = livePos ?? target;
     const next: Position = { ...base };
     next[axis] = clamp(base[axis] + d, effectiveLimits[`${axis}_min`], effectiveLimits[`${axis}_max`]);
     setTarget(next);
@@ -178,8 +191,8 @@ export default function ManualControl({
   }
 
   function snapToActual() {
-    if (!eePosition) return;
-    setTarget({ x: eePosition.x, y: eePosition.y, z: eePosition.z });
+    if (!livePos) return;
+    setTarget({ x: livePos.x, y: livePos.y, z: livePos.z });
   }
 
   function startEdit(axis: 'x' | 'y' | 'z') {
@@ -298,12 +311,12 @@ export default function ManualControl({
               </span>
               <span style={{
                 fontFamily: 'var(--font-mono)', fontSize: 12,
-                color: eePosition ? 'var(--color-text-primary)' : 'var(--color-text-disabled)',
+                color: livePos ? 'var(--color-text-primary)' : 'var(--color-text-disabled)',
                 background: 'var(--color-bg-surface-2)',
                 border: '1px solid var(--color-border-subtle)',
                 borderRadius: 'var(--radius-sm)', padding: '3px 6px',
               }}>
-                {eePosition ? fmtM(eePosition[axis]) : '—'}
+                {livePos ? fmtM(livePos[axis]) : '—'}
               </span>
 
               {editing === axis ? (
@@ -358,7 +371,7 @@ export default function ManualControl({
             <button
               className="ds-btn ghost sm"
               onClick={snapToActual}
-              disabled={!eePosition}
+              disabled={!livePos}
               style={{ fontSize: 9, padding: '3px 8px', flexShrink: 0 }}
               title="Reset target to actual robot position"
             >
@@ -447,7 +460,7 @@ export default function ManualControl({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9,
                 color: 'var(--color-text-tertiary)' }}>
-                {eePosition ? fmtM(eePosition.z) : '—'}m
+                {livePos ? fmtM(livePos.z) : '—'}m
               </span>
             </div>
             <button className="ds-btn ghost sm" onClick={() => handleRelativeMove('z', step)}
