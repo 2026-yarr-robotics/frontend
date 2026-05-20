@@ -34,6 +34,38 @@ function now(): string {
 const DEFAULT_JOINTS = [0, -30, 90, 0, 90, 0];
 const BRINGUP_TASK = 'bringup_real';
 
+// Either `z` (explicit cup-top centre) or `cupCount` (N nested cups → ROS 2
+// computes Z server-side) must be set. Cup-geometry constants intentionally
+// live in `cup_stack/skills/config.py`, not here.
+interface PickArgs { x: number; y: number; z?: number; cupCount?: number }
+
+// Parses, in order of preference:
+//   pick -x X -y Y -z Z         → explicit cup-top Z
+//   pick -x X -y Y --cup N      → ROS 2 derives Z from N nested cups
+//   pick -x X -y Y              → defaults to --cup 1
+//   pick X Y Z                  → legacy positional form
+function parsePickArgs(cmd: string): PickArgs | null {
+  const flagMode = /(?:^|\s)(?:-x|-y|-z|--cup)\b/i.test(cmd);
+  if (flagMode) {
+    const num = (re: RegExp) => {
+      const m = cmd.match(re);
+      return m ? Number(m[1]) : NaN;
+    };
+    const x = num(/(?:^|\s)-x\s+(-?\d+(?:\.\d+)?)/i);
+    const y = num(/(?:^|\s)-y\s+(-?\d+(?:\.\d+)?)/i);
+    if (Number.isNaN(x) || Number.isNaN(y)) return null;
+    const zExp = num(/(?:^|\s)-z\s+(-?\d+(?:\.\d+)?)/i);
+    if (!Number.isNaN(zExp)) return { x, y, z: zExp };
+    const cupM = cmd.match(/(?:^|\s)--cup(?:\s+(\d+))?/i);
+    const n = cupM ? (cupM[1] ? Number(cupM[1]) : 1) : 1;
+    if (n < 1) return null;
+    return { x, y, cupCount: n };
+  }
+  const nums = (cmd.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  if (nums.length >= 3) return { x: nums[0], y: nums[1], z: nums[2] };
+  return null;
+}
+
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -143,18 +175,20 @@ export default function App() {
 
   // ── Command handler ──
   // Pick-one runs purely from the command box (no camera/pixel needed):
-  //   pick <x> <y> <z>   where x,y,z = cup top-centre (base_link, m)
+  //   pick -x X -y Y -z Z      → cup top-centre Z (base_link, m)
+  //   pick -x X -y Y --cup N   → ROS 2 derives Z from N nested cups (default 1)
+  //   pick X Y Z               → legacy positional form
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
     if (!/pick/i.test(cmd)) {
-      addLog('WARN', `Unknown command: "${cmd}" — try "pick <x> <y> <z>"`);
+      addLog('WARN', `Unknown command: "${cmd}" — try "pick -x X -y Y -z Z" 또는 "pick -x X -y Y --cup N"`);
       return;
     }
 
-    const nums = (cmd.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
-    if (nums.length < 3) {
-      addLog('WARN', 'Usage: pick <x> <y> <z> — 컵 윗면 중앙 base_link 좌표(m). 예: pick 0.45 -0.12 0.05');
+    const args = parsePickArgs(cmd);
+    if (!args) {
+      addLog('WARN', 'Usage: pick -x X -y Y -z Z  |  pick -x X -y Y --cup N(=1) — base_link, m');
       return;
     }
     if (!wsConnected || !robotOnline) {
@@ -162,11 +196,15 @@ export default function App() {
       return;
     }
 
-    const [x, y, z] = nums;
-    addLog('INFO', `Picking cup at cup-top centre (${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})…`);
+    const { x, y, z, cupCount } = args;
+    const tail = cupCount !== undefined
+      ? `--cup ${cupCount} (Z auto by ROS 2)`
+      : `z=${z!.toFixed(3)}`;
+    addLog('INFO', `Picking cup at (${x.toFixed(3)}, ${y.toFixed(3)}) [${tail}]…`);
     setTaskStatus('executing');
     try {
-      const r = await pickOne(x, y, z);
+      const r = await pickOne(x, y,
+        cupCount !== undefined ? { nestedCount: cupCount } : { cupTopZ: z! });
       if (r.success) addLog('OK', `Pick complete — ${r.detail}`);
       else addLog('ERR', `Pick failed — ${r.detail}`);
     } catch (e) {
