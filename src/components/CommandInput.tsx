@@ -109,7 +109,11 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               </li>
               <li>
                 <code style={{ color: 'var(--color-cyan)' }}>pick X Y Z</code>
-                {'  '}— legacy positional 형식
+                {'  '}— positional, Z 명시
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>pick X Y</code>
+                {'  '}— positional, <code>--cup 1</code> 과 동일
               </li>
             </ul>
 
@@ -120,7 +124,8 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 -z 0.05</code> — 명시 Z</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 --cup 6</code> — 6 컵 스택 상단</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12</code> — 1 컵 (기본)</li>
-              <li><code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12 0.05</code> — legacy positional</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12 0.05</code> — positional, Z 명시</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12</code> — positional, 1 컵</li>
             </ul>
 
             <div style={{ marginTop: 4, fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 10, color: 'var(--color-text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>

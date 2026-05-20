@@ -43,7 +43,8 @@ interface PickArgs { x: number; y: number; z?: number; cupCount?: number }
 //   pick -x X -y Y -z Z         → explicit cup-top Z
 //   pick -x X -y Y --cup N      → ROS 2 derives Z from N nested cups
 //   pick -x X -y Y              → defaults to --cup 1
-//   pick X Y Z                  → legacy positional form
+//   pick X Y Z                  → legacy positional form (explicit Z)
+//   pick X Y                    → positional shorthand, equivalent to --cup 1
 function parsePickArgs(cmd: string): PickArgs | null {
   const flagMode = /(?:^|\s)(?:-x|-y|-z|--cup)\b/i.test(cmd);
   if (flagMode) {
@@ -63,6 +64,7 @@ function parsePickArgs(cmd: string): PickArgs | null {
   }
   const nums = (cmd.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
   if (nums.length >= 3) return { x: nums[0], y: nums[1], z: nums[2] };
+  if (nums.length === 2) return { x: nums[0], y: nums[1], cupCount: 1 };
   return null;
 }
 
@@ -177,7 +179,8 @@ export default function App() {
   // Pick-one runs purely from the command box (no camera/pixel needed):
   //   pick -x X -y Y -z Z      → cup top-centre Z (base_link, m)
   //   pick -x X -y Y --cup N   → ROS 2 derives Z from N nested cups (default 1)
-  //   pick X Y Z               → legacy positional form
+  //   pick X Y Z               → positional, explicit Z
+  //   pick X Y                 → positional shorthand, --cup 1
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
@@ -188,7 +191,7 @@ export default function App() {
 
     const args = parsePickArgs(cmd);
     if (!args) {
-      addLog('WARN', 'Usage: pick -x X -y Y -z Z  |  pick -x X -y Y --cup N(=1) — base_link, m');
+      addLog('WARN', 'Usage: pick -x X -y Y [-z Z | --cup N]  ·  pick X Y [Z] — base_link, m');
       return;
     }
     if (!wsConnected || !robotOnline) {
