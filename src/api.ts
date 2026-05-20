@@ -109,17 +109,31 @@ export interface PickSkillResponse {
   detail: string;
 }
 
+export interface PickOptions {
+  /** Cup top-centre Z (base_link, m). Server adds cup_grip_z_offset. */
+  cupTopZ?: number;
+  /** Number of nested cups in the source stack; ROS 2 derives the Z. */
+  nestedCount?: number;
+  ori?: { x: number; y: number; z: number; w: number };
+}
+
 /**
- * Pick one cup. Coordinates are the **cup top centre** (base_link, m).
- * `cupTopZ` is converted to gripper Z server-side (+ cup_grip_z_offset).
+ * Pick one cup at base_link (x, y). Caller must supply either `cupTopZ`
+ * or `nestedCount` — the cup-stack geometry constants live in ROS 2
+ * (`cup_stack.skills.config.SkillStackConfig`), not the frontend.
  */
 export async function pickOne(
   x: number,
   y: number,
-  cupTopZ: number,
-  ori?: { x: number; y: number; z: number; w: number },
+  opts: PickOptions,
 ): Promise<PickSkillResponse> {
+  if (opts.cupTopZ === undefined && opts.nestedCount === undefined) {
+    throw new Error('pickOne: supply cupTopZ or nestedCount');
+  }
   return post<PickSkillResponse>('/api/robot/skill/pick', {
-    x, y, cup_top_z: cupTopZ, ...(ori ? { ori } : {}),
+    x, y,
+    ...(opts.cupTopZ !== undefined ? { cup_top_z: opts.cupTopZ } : {}),
+    ...(opts.nestedCount !== undefined ? { nested_count: opts.nestedCount } : {}),
+    ...(opts.ori ? { ori: opts.ori } : {}),
   });
 }
