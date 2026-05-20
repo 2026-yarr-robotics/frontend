@@ -87,24 +87,49 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             <div style={{ fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 11, color: 'var(--color-text-primary)' }}>
               Pick — 컵 한 개 집기
             </div>
-            <div>
-              <code style={{ color: 'var(--color-cyan)' }}>pick -x X -y Y -z Z</code>
-              {'  '}— Z = 컵 <strong>윗면 중앙</strong> (base_link, m)
+            <div style={{ color: 'var(--color-text-tertiary)' }}>
+              좌표계 <strong>base_link</strong>, 단위 <strong>m</strong>. X·Y 는 컵 중앙, Z 는 컵 <strong>윗면</strong> 기준.
             </div>
-            <div>
-              <code style={{ color: 'var(--color-cyan)' }}>pick -x X -y Y --cup N</code>
-              {'  '}— N개 nested 컵 → Z는 <strong>ROS 2 서버에서 자동 계산</strong> (N 기본=1)
+
+            <div style={{ marginTop: 4, fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 10, color: 'var(--color-text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              사용법
             </div>
-            <div>예시:</div>
-            <ul style={{ margin: '0', paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 -z 0.05</code></li>
-              <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 --cup 6</code></li>
-              <li><code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12 0.05</code> (legacy positional)</li>
+            <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>pick -x X -y Y -z Z</code>
+                {'  '}— Z 를 명시 (컵 윗면 중앙)
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>pick -x X -y Y --cup N</code>
+                {'  '}— nested 컵 N 개 → Z 는 <strong>ROS 2 가 자동 계산</strong>
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>pick -x X -y Y</code>
+                {'  '}— <code>--cup 1</code> 과 동일 (가장 간단한 형태)
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>pick X Y Z</code>
+                {'  '}— legacy positional 형식
+              </li>
             </ul>
-            <ul style={{ margin: '2px 0 0', paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <li>-z 와 --cup 동시 지정 시 -z 우선</li>
-              <li>--cup 의 실제 Z 계산은 <code>cup_stack.skills.config</code> (ROS 2) 가 담당</li>
-              <li>로봇이 online일 때만 실행 (offline이면 경고만 표시)</li>
+
+            <div style={{ marginTop: 4, fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 10, color: 'var(--color-text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              예시
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 -z 0.05</code> — 명시 Z</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 --cup 6</code> — 6 컵 스택 상단</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12</code> — 1 컵 (기본)</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12 0.05</code> — legacy positional</li>
+            </ul>
+
+            <div style={{ marginTop: 4, fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 10, color: 'var(--color-text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              참고
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <li><code>-z</code> 와 <code>--cup</code> 동시 지정 시 <code>-z</code> 우선</li>
+              <li><code>--cup</code> 의 Z 계산은 <code>cup_stack.skills.config</code> (ROS 2) 가 담당</li>
+              <li>로봇이 online 일 때만 실행 (offline 이면 경고만 표시)</li>
               <li><kbd>↑</kbd>/<kbd>↓</kbd> 로 명령 히스토리 탐색</li>
             </ul>
             <a
