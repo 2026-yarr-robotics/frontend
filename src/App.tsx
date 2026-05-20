@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import './index.css';
 
 import Header from './components/Header';
@@ -10,7 +10,7 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, pickOne, getBaseUrl, setBaseUrl, type EePosition } from './api';
+import { startBringup, stopBringup, stopTask, pickOne, getBaseUrl, setBaseUrl, type EePosition } from './api';
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
@@ -32,7 +32,6 @@ function now(): string {
 }
 
 const DEFAULT_JOINTS = [0, -30, 90, 0, 90, 0];
-const BRINGUP_TASK = 'bringup_real';
 
 // Either `z` (explicit cup-top centre) or `cupCount` (N nested cups → ROS 2
 // computes Z server-side) must be set. Cup-geometry constants intentionally
@@ -77,6 +76,10 @@ export default function App() {
   const [joints, setJoints] = useState<number[]>(DEFAULT_JOINTS);
   const [gripperMm, setGripperMm] = useState<number | null>(null);
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('idle');
+  const [taskName, setTaskName] = useState<string | null>(null);
+  // Timestamp of last user abort. While the server reconciles, ignore
+  // stale `running` from WS to prevent the executing↔idle bounce.
+  const abortGuardRef = useRef<number>(0);
   const [cycleIdx] = useState(0);
   const [bringupActive, setBringupActive] = useState(false);
   const [robotOnline, setRobotOnline] = useState(false);
@@ -114,8 +117,13 @@ export default function App() {
     setEePosition(data.ee_position ?? null);
     setGripperMm(data.gripper?.width_mm ?? null);
 
+    setTaskName(data.task?.name ?? null);
+
     const taskSt = data.task?.status;
-    if (taskSt === 'running') setTaskStatus('executing');
+    // Abort guard: within 2s of a user abort, ignore stale `running`
+    // pushed before the server has reconciled the stop request.
+    const recentlyAborted = Date.now() - abortGuardRef.current < 2000;
+    if (taskSt === 'running' && !recentlyAborted) setTaskStatus('executing');
     else if (taskSt === 'idle' || taskSt === null) setTaskStatus('idle');
     else if (taskSt === 'failed') setTaskStatus('error');
   }, []);
@@ -134,6 +142,9 @@ export default function App() {
   useJsonWebSocket<RobotState>('/ws/robot/state', handleRobotState);
 
   // ── WebSocket: task logs ──
+  // Log-only: task status is owned by `/ws/robot/state` to avoid the
+  // executing↔idle bounce when log replays carry `status: 'running'`
+  // while robot/state already reports `idle`.
   const handleTaskLog = useCallback((data: TaskLog) => {
     if (data.log?.length) {
       const newLogs: LogEntry[] = data.log.map(msg => ({
@@ -145,9 +156,6 @@ export default function App() {
         msg,
       }));
       setLogs(prev => [...prev, ...newLogs].slice(-200));
-    }
-    if (data.task && data.status === 'running') {
-      setTaskStatus('executing');
     }
   }, []);
 
@@ -224,9 +232,23 @@ export default function App() {
     window.location.reload();
   }
 
-  function handleAbort() {
-    setTaskStatus('error');
-    addLog('ERR', 'Aborted by operator');
+  async function handleAbort() {
+    // Engage guard first so the next WS tick can't bounce us back to
+    // `executing` before the server has processed the stop.
+    abortGuardRef.current = Date.now();
+    setTaskStatus('idle');
+    const name = taskName;
+    if (!name) {
+      addLog('WARN', 'Abort: no active task name known to the server');
+      return;
+    }
+    addLog('WARN', `Aborting task: ${name}…`);
+    try {
+      await stopTask(name);
+      addLog('OK', `Aborted: ${name}`);
+    } catch (e) {
+      addLog('ERR', `Abort failed: ${(e as Error).message}`);
+    }
   }
 
   const gridCols = `${sidebarOpen ? 'var(--sidebar-width)' : '0px'} 1fr ${rightPanelOpen ? 'var(--right-panel-width)' : '0px'}`;
