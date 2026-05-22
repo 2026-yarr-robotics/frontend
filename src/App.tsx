@@ -194,13 +194,16 @@ export default function App() {
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
-    // /pick [N] — use the live EE xy from the WS status stream as the
+    // Leading slash is optional in the UI — `/pick` and `pick` are equivalent.
+    const norm = cmd.trim().replace(/^\/+/, '');
+
+    // pick [N] — use the live EE xy from the WS status stream as the
     // pick target. Useful for "pick whatever the arm is hovering over".
-    const slashPick = cmd.trim().match(/^\/pick(?:\s+(\d+))?\s*$/i);
-    if (slashPick) {
-      const n = slashPick[1] ? Number(slashPick[1]) : 1;
+    const barePick = norm.match(/^pick(?:\s+(\d+))?\s*$/i);
+    if (barePick) {
+      const n = barePick[1] ? Number(barePick[1]) : 1;
       if (n < 1) {
-        addLog('WARN', '/pick N: N must be >= 1');
+        addLog('WARN', 'pick N: N must be >= 1');
         return;
       }
       if (!wsConnected || !robotOnline) {
@@ -208,7 +211,7 @@ export default function App() {
         return;
       }
       if (!eePosition) {
-        addLog('WARN', '/pick: current EE position not available yet');
+        addLog('WARN', 'pick: current EE position not available yet');
         return;
       }
       const { x, y } = eePosition;
@@ -226,14 +229,14 @@ export default function App() {
       return;
     }
 
-    if (!/pick/i.test(cmd)) {
-      addLog('WARN', `Unknown command: "${cmd}" — try "/pick [N]" 또는 "pick -x X -y Y --cup N"`);
+    if (!/^pick\b/i.test(norm)) {
+      addLog('WARN', `Unknown command: "${cmd}" — try "pick [N]" 또는 "pick -x X -y Y --cup N"`);
       return;
     }
 
-    const args = parsePickArgs(cmd);
+    const args = parsePickArgs(norm);
     if (!args) {
-      addLog('WARN', 'Usage: /pick [N]  ·  pick -x X -y Y [-z Z | --cup N]  ·  pick X Y [Z] — base_link, m');
+      addLog('WARN', 'Usage: pick [N]  ·  pick -x X -y Y [-z Z | --cup N]  ·  pick X Y [Z] — base_link, m');
       return;
     }
     if (!wsConnected || !robotOnline) {
