@@ -274,14 +274,30 @@ export default function App() {
       return;
     }
 
-    // ── pyramid <slot> <x> <y> ───────────────────────────────────────
+    // ── pyramid <slot> [x y] ─────────────────────────────────────────
+    // x y 생략 시 현재 EE xy 를 pick 좌표로 사용 (pick 명령과 동일 동작).
     if (/^pyramid\b/i.test(norm)) {
       const slot = tokens[1];
-      const x = Number(tokens[2]);
-      const y = Number(tokens[3]);
-      if (!slot || !isPyramidSlot(slot) || !Number.isFinite(x) || !Number.isFinite(y)) {
-        addLog('WARN', 'usage: pyramid <1l|1m|1r|2l|2r|3m> <x> <y>');
+      if (!slot || !isPyramidSlot(slot)) {
+        addLog('WARN', 'usage: pyramid <1l|1m|1r|2l|2r|3m> [x y]');
         return;
+      }
+      let x: number;
+      let y: number;
+      if (tokens.length >= 4) {
+        x = Number(tokens[2]);
+        y = Number(tokens[3]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          addLog('WARN', 'usage: pyramid <slot> [x y] — x, y must be numbers');
+          return;
+        }
+      } else {
+        if (!eePosition) {
+          addLog('WARN', 'pyramid: current EE position not available yet');
+          return;
+        }
+        x = eePosition.x;
+        y = eePosition.y;
       }
       if (!wsConnected || !robotOnline) {
         addLog('WARN', 'Robot must be online to run pyramid skill');

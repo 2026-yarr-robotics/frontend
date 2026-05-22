@@ -143,8 +143,8 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             </div>
             <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <li>
-                <code style={{ color: 'var(--color-cyan)' }}>pyramid &lt;slot&gt; &lt;x&gt; &lt;y&gt;</code>
-                {'  '}— slot ∈ <code>1l|1m|1r|2l|2r|3m</code>
+                <code style={{ color: 'var(--color-cyan)' }}>pyramid &lt;slot&gt; [x y]</code>
+                {'  '}— slot ∈ <code>1l|1m|1r|2l|2r|3m</code>. x·y 생략 시 현재 EE xy
               </li>
               <li>
                 <code style={{ color: 'var(--color-cyan)' }}>config pyramid</code>
