@@ -96,6 +96,14 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             </div>
             <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <li>
+                <code style={{ color: 'var(--color-cyan)' }}>/pick</code>
+                {'  '}— 현재 EE xy 위치에서 <code>--cup 1</code>
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>/pick N</code>
+                {'  '}— 현재 EE xy 위치에서 nested 컵 N 개
+              </li>
+              <li>
                 <code style={{ color: 'var(--color-cyan)' }}>pick -x X -y Y -z Z</code>
                 {'  '}— Z 를 명시 (컵 윗면 중앙)
               </li>
@@ -121,6 +129,8 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               예시
             </div>
             <ul style={{ margin: 0, paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <li><code style={{ color: 'var(--color-cyan)' }}>/pick</code> — 현재 EE xy, 1 컵</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>/pick 2</code> — 현재 EE xy, 2 컵 nested</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 -z 0.05</code> — 명시 Z</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 --cup 6</code> — 6 컵 스택 상단</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12</code> — 1 컵 (기본)</li>

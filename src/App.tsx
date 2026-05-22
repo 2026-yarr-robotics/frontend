@@ -185,6 +185,8 @@ export default function App() {
 
   // ── Command handler ──
   // Pick-one runs purely from the command box (no camera/pixel needed):
+  //   /pick                    → current EE xy, --cup 1
+  //   /pick N                  → current EE xy, --cup N
   //   pick -x X -y Y -z Z      → cup top-centre Z (base_link, m)
   //   pick -x X -y Y --cup N   → ROS 2 derives Z from N nested cups (default 1)
   //   pick X Y Z               → positional, explicit Z
@@ -192,14 +194,46 @@ export default function App() {
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
+    // /pick [N] — use the live EE xy from the WS status stream as the
+    // pick target. Useful for "pick whatever the arm is hovering over".
+    const slashPick = cmd.trim().match(/^\/pick(?:\s+(\d+))?\s*$/i);
+    if (slashPick) {
+      const n = slashPick[1] ? Number(slashPick[1]) : 1;
+      if (n < 1) {
+        addLog('WARN', '/pick N: N must be >= 1');
+        return;
+      }
+      if (!wsConnected || !robotOnline) {
+        addLog('WARN', 'Robot must be online to pick a cup');
+        return;
+      }
+      if (!eePosition) {
+        addLog('WARN', '/pick: current EE position not available yet');
+        return;
+      }
+      const { x, y } = eePosition;
+      addLog('INFO', `Picking cup at current EE (${x.toFixed(3)}, ${y.toFixed(3)}) [--cup ${n}]…`);
+      setTaskStatus('executing');
+      try {
+        const r = await pickOne(x, y, { nestedCount: n });
+        if (r.success) addLog('OK', `Pick complete — ${r.detail}`);
+        else addLog('ERR', `Pick failed — ${r.detail}`);
+      } catch (e) {
+        addLog('ERR', `Pick error: ${(e as Error).message}`);
+      } finally {
+        setTaskStatus('idle');
+      }
+      return;
+    }
+
     if (!/pick/i.test(cmd)) {
-      addLog('WARN', `Unknown command: "${cmd}" — try "pick -x X -y Y -z Z" 또는 "pick -x X -y Y --cup N"`);
+      addLog('WARN', `Unknown command: "${cmd}" — try "/pick [N]" 또는 "pick -x X -y Y --cup N"`);
       return;
     }
 
     const args = parsePickArgs(cmd);
     if (!args) {
-      addLog('WARN', 'Usage: pick -x X -y Y [-z Z | --cup N]  ·  pick X Y [Z] — base_link, m');
+      addLog('WARN', 'Usage: /pick [N]  ·  pick -x X -y Y [-z Z | --cup N]  ·  pick X Y [Z] — base_link, m');
       return;
     }
     if (!wsConnected || !robotOnline) {
@@ -224,7 +258,7 @@ export default function App() {
       setTaskStatus('idle');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wsConnected, robotOnline]);
+  }, [wsConnected, robotOnline, eePosition]);
 
   function handleChangeBaseUrl(url: string) {
     setBaseUrl(url);
