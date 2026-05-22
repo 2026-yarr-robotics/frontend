@@ -138,6 +138,36 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               <li><code style={{ color: 'var(--color-cyan)' }}>pick 0.45 -0.12</code> — positional, 1 컵</li>
             </ul>
 
+            <div style={{ marginTop: 8, fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 11, color: 'var(--color-text-primary)' }}>
+              Pyramid — 3-2-1 피라미드 단위 스킬
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>pyramid &lt;slot&gt; &lt;x&gt; &lt;y&gt;</code>
+                {'  '}— slot ∈ <code>1l|1m|1r|2l|2r|3m</code>
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>config pyramid</code>
+                {'  '}— 현재 cp / degree / pick_z + 6 slot 좌표
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>config pyramid center X Y</code>
+                {'  '}— 중심 좌표 갱신
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>config pyramid degree D</code>
+                {'  '}— 행 방향 yaw (deg, 0~360, +x 기준 반시계)
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>config pyramid pick_z Z</code>
+                {'  '}— 그리퍼 pick Z (base_link, m)
+              </li>
+              <li>
+                <code style={{ color: 'var(--color-cyan)' }}>config workspace</code>
+                {'  '}— 워크스페이스 한계 조회
+              </li>
+            </ul>
+
             <div style={{ marginTop: 4, fontFamily: 'var(--font-ui)', fontWeight: 600, fontSize: 10, color: 'var(--color-text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               참고
             </div>

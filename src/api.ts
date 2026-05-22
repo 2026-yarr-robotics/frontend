@@ -60,7 +60,7 @@ export interface WorkspaceLimits {
 }
 
 export async function getWorkspaceLimits(): Promise<WorkspaceLimits> {
-  return get('/api/robot/workspace/limits');
+  return get('/api/robot/config/workspace');
 }
 
 export interface EePosition {
@@ -136,4 +136,44 @@ export async function pickOne(
     ...(opts.nestedCount !== undefined ? { nested_count: opts.nestedCount } : {}),
     ...(opts.ori ? { ori: opts.ori } : {}),
   });
+}
+
+// ── Pyramid skill ─────────────────────────────────────────────────────────
+
+export type PyramidSlot = '1l' | '1m' | '1r' | '2l' | '2r' | '3m';
+
+export interface PyramidConfigCenter { x: number; y: number; }
+export interface PyramidSlotXYZ { x: number; y: number; z: number; }
+
+export interface PyramidConfig {
+  center: PyramidConfigCenter;
+  degree: number;
+  pick_z: number;
+  slots: Record<PyramidSlot, PyramidSlotXYZ>;
+}
+
+export interface PyramidConfigUpdate {
+  center?: PyramidConfigCenter;
+  degree?: number;
+  pick_z?: number;
+}
+
+export interface PyramidSkillResponse {
+  success: boolean;
+  skill: string;
+  detail: string;
+}
+
+export async function getPyramidConfig(): Promise<PyramidConfig> {
+  return get<PyramidConfig>('/api/robot/config/pyramid');
+}
+
+export async function setPyramidConfig(update: PyramidConfigUpdate): Promise<PyramidConfig> {
+  return post<PyramidConfig>('/api/robot/config/pyramid', update);
+}
+
+export async function pyramidSkill(
+  x: number, y: number, slot: PyramidSlot,
+): Promise<PyramidSkillResponse> {
+  return post<PyramidSkillResponse>('/api/robot/skill/pyramid', { x, y, slot });
 }

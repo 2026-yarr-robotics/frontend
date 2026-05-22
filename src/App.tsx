@@ -10,7 +10,18 @@ import ManualControl from './components/ManualControl';
 import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
-import { startBringup, stopBringup, stopTask, pickOne, getBaseUrl, setBaseUrl, type EePosition } from './api';
+import {
+  startBringup, stopBringup, stopTask, pickOne,
+  getPyramidConfig, setPyramidConfig, pyramidSkill, getWorkspaceLimits,
+  getBaseUrl, setBaseUrl,
+  type EePosition, type PyramidSlot,
+} from './api';
+
+const PYRAMID_SLOT_KEYS: readonly PyramidSlot[] = ['1l', '1m', '1r', '2l', '2r', '3m'];
+
+function isPyramidSlot(s: string): s is PyramidSlot {
+  return (PYRAMID_SLOT_KEYS as readonly string[]).includes(s);
+}
 
 interface RobotState {
   joints: { name: string[]; position: number[]; velocity: number[]; effort: number[] };
@@ -196,6 +207,99 @@ export default function App() {
     addLog('INFO', `> ${cmd}`);
 
     const norm = cmd.trim().replace(/^\/+/, '');
+    const tokens = norm.split(/\s+/);
+
+    // ── config workspace ─────────────────────────────────────────────
+    if (/^config\s+workspace\b/i.test(norm)) {
+      try {
+        const w = await getWorkspaceLimits();
+        addLog('OK',
+          `workspace x[${w.x_min.toFixed(2)},${w.x_max.toFixed(2)}] ` +
+          `y[${w.y_min.toFixed(2)},${w.y_max.toFixed(2)}] ` +
+          `z[${w.z_min.toFixed(2)},${w.z_max.toFixed(2)}] grid=${w.grid_spacing}`,
+        );
+      } catch (e) {
+        addLog('ERR', `config workspace: ${(e as Error).message}`);
+      }
+      return;
+    }
+
+    // ── config pyramid [center <x> <y> | degree <d> | pick_z <z>] ────
+    if (/^config\s+pyramid\b/i.test(norm)) {
+      const sub = tokens[2];   // undefined → GET
+      try {
+        if (!sub) {
+          const c = await getPyramidConfig();
+          addLog('OK',
+            `pyramid center=(${c.center.x.toFixed(3)},${c.center.y.toFixed(3)}) ` +
+            `degree=${c.degree.toFixed(1)} pick_z=${c.pick_z.toFixed(3)}`,
+          );
+          for (const k of PYRAMID_SLOT_KEYS) {
+            const s = c.slots[k];
+            addLog('INFO',
+              `  ${k}: (${s.x.toFixed(3)}, ${s.y.toFixed(3)}, ${s.z.toFixed(3)})`,
+            );
+          }
+        } else if (sub === 'center') {
+          const x = Number(tokens[3]);
+          const y = Number(tokens[4]);
+          if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            addLog('WARN', 'usage: config pyramid center <x> <y>');
+            return;
+          }
+          const c = await setPyramidConfig({ center: { x, y } });
+          addLog('OK', `center=(${c.center.x.toFixed(3)},${c.center.y.toFixed(3)})`);
+        } else if (sub === 'degree') {
+          const d = Number(tokens[3]);
+          if (!Number.isFinite(d)) {
+            addLog('WARN', 'usage: config pyramid degree <deg>');
+            return;
+          }
+          const c = await setPyramidConfig({ degree: d });
+          addLog('OK', `degree=${c.degree.toFixed(1)}`);
+        } else if (sub === 'pick_z') {
+          const z = Number(tokens[3]);
+          if (!Number.isFinite(z)) {
+            addLog('WARN', 'usage: config pyramid pick_z <z>');
+            return;
+          }
+          const c = await setPyramidConfig({ pick_z: z });
+          addLog('OK', `pick_z=${c.pick_z.toFixed(3)}`);
+        } else {
+          addLog('WARN', 'usage: config pyramid [center <x> <y> | degree <d> | pick_z <z>]');
+        }
+      } catch (e) {
+        addLog('ERR', `config pyramid: ${(e as Error).message}`);
+      }
+      return;
+    }
+
+    // ── pyramid <slot> <x> <y> ───────────────────────────────────────
+    if (/^pyramid\b/i.test(norm)) {
+      const slot = tokens[1];
+      const x = Number(tokens[2]);
+      const y = Number(tokens[3]);
+      if (!slot || !isPyramidSlot(slot) || !Number.isFinite(x) || !Number.isFinite(y)) {
+        addLog('WARN', 'usage: pyramid <1l|1m|1r|2l|2r|3m> <x> <y>');
+        return;
+      }
+      if (!wsConnected || !robotOnline) {
+        addLog('WARN', 'Robot must be online to run pyramid skill');
+        return;
+      }
+      addLog('INFO', `pyramid slot=${slot} pick=(${x.toFixed(3)}, ${y.toFixed(3)})…`);
+      setTaskStatus('executing');
+      try {
+        const r = await pyramidSkill(x, y, slot);
+        if (r.success) addLog('OK', `pyramid complete — ${r.detail}`);
+        else addLog('ERR', `pyramid failed — ${r.detail}`);
+      } catch (e) {
+        addLog('ERR', `pyramid error: ${(e as Error).message}`);
+      } finally {
+        setTaskStatus('idle');
+      }
+      return;
+    }
 
     // pick [N] — use the live EE xy from the WS status stream as the
     // pick target. Useful for "pick whatever the arm is hovering over".
@@ -230,7 +334,10 @@ export default function App() {
     }
 
     if (!/^pick\b/i.test(norm)) {
-      addLog('WARN', `Unknown command: "${cmd}" — try "pick [N]" 또는 "pick -x X -y Y --cup N"`);
+      addLog('WARN',
+        `Unknown command: "${cmd}" — try: pick, pyramid <slot> <x> <y>, ` +
+        `config pyramid [...], config workspace`,
+      );
       return;
     }
 
