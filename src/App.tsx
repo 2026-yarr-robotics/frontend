@@ -185,16 +185,16 @@ export default function App() {
 
   // ── Command handler ──
   // Pick-one runs purely from the command box (no camera/pixel needed):
-  //   /pick                    → current EE xy, --cup 1
-  //   /pick N                  → current EE xy, --cup N
+  //   pick                     → current EE xy, --cup 1
+  //   pick N                   → current EE xy, --cup N
   //   pick -x X -y Y -z Z      → cup top-centre Z (base_link, m)
   //   pick -x X -y Y --cup N   → ROS 2 derives Z from N nested cups (default 1)
   //   pick X Y Z               → positional, explicit Z
   //   pick X Y                 → positional shorthand, --cup 1
+  // A leading "/" is accepted but stripped — chat-style `/pick` == `pick`.
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
-    // Leading slash is optional in the UI — `/pick` and `pick` are equivalent.
     const norm = cmd.trim().replace(/^\/+/, '');
 
     // pick [N] — use the live EE xy from the WS status stream as the

@@ -96,11 +96,11 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             </div>
             <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <li>
-                <code style={{ color: 'var(--color-cyan)' }}>/pick</code>
+                <code style={{ color: 'var(--color-cyan)' }}>pick</code>
                 {'  '}— 현재 EE xy 위치에서 <code>--cup 1</code>
               </li>
               <li>
-                <code style={{ color: 'var(--color-cyan)' }}>/pick N</code>
+                <code style={{ color: 'var(--color-cyan)' }}>pick N</code>
                 {'  '}— 현재 EE xy 위치에서 nested 컵 N 개
               </li>
               <li>
@@ -129,8 +129,8 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               예시
             </div>
             <ul style={{ margin: 0, paddingLeft: 16, color: 'var(--color-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <li><code style={{ color: 'var(--color-cyan)' }}>/pick</code> — 현재 EE xy, 1 컵</li>
-              <li><code style={{ color: 'var(--color-cyan)' }}>/pick 2</code> — 현재 EE xy, 2 컵 nested</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick</code> — 현재 EE xy, 1 컵</li>
+              <li><code style={{ color: 'var(--color-cyan)' }}>pick 2</code> — 현재 EE xy, 2 컵 nested</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 -z 0.05</code> — 명시 Z</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12 --cup 6</code> — 6 컵 스택 상단</li>
               <li><code style={{ color: 'var(--color-cyan)' }}>pick -x 0.45 -y -0.12</code> — 1 컵 (기본)</li>
@@ -145,6 +145,7 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               <li><code>-z</code> 와 <code>--cup</code> 동시 지정 시 <code>-z</code> 우선</li>
               <li><code>--cup</code> 의 Z 계산은 <code>cup_stack.skills.config</code> (ROS 2) 가 담당</li>
               <li>로봇이 online 일 때만 실행 (offline 이면 경고만 표시)</li>
+              <li>접두 <code>/</code> 는 선택 — <code>/pick</code> 과 <code>pick</code> 동일하게 처리</li>
               <li><kbd>↑</kbd>/<kbd>↓</kbd> 로 명령 히스토리 탐색</li>
             </ul>
             <a
