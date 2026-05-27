@@ -12,7 +12,7 @@ import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
 import {
   startBringup, stopBringup, stopTask, pickOne,
-  getPyramidConfig, setPyramidConfig, pyramidSkill, getWorkspaceLimits,
+  getPyramidConfig, setPyramidConfig, pyramidSkill, scanSkill, getWorkspaceLimits,
   getBaseUrl, setBaseUrl,
   type EePosition, type PyramidSlot,
 } from './api';
@@ -317,6 +317,28 @@ export default function App() {
       return;
     }
 
+    // ── scan ─────────────────────────────────────────────────────────
+    // 인자 없는 단일 스킬. ROS 2 측이 pos1 → pos2 → 초기 위치 순으로
+    // PTP 이동하며 각 웨이포인트 도달 후 dwell 만큼 대기한다.
+    if (/^scan\s*$/i.test(norm)) {
+      if (!wsConnected || !robotOnline) {
+        addLog('WARN', 'Robot must be online to run scan skill');
+        return;
+      }
+      addLog('INFO', 'scan…');
+      setTaskStatus('executing');
+      try {
+        const r = await scanSkill();
+        if (r.success) addLog('OK', `scan complete${r.detail ? ` — ${r.detail}` : ''}`);
+        else addLog('ERR', `scan failed${r.detail ? ` — ${r.detail}` : ''}`);
+      } catch (e) {
+        addLog('ERR', `scan error: ${(e as Error).message}`);
+      } finally {
+        setTaskStatus('idle');
+      }
+      return;
+    }
+
     // pick [N] — use the live EE xy from the WS status stream as the
     // pick target. Useful for "pick whatever the arm is hovering over".
     const barePick = norm.match(/^pick(?:\s+(\d+))?\s*$/i);
@@ -351,7 +373,7 @@ export default function App() {
 
     if (!/^pick\b/i.test(norm)) {
       addLog('WARN',
-        `Unknown command: "${cmd}" — try: pick, pyramid <slot> <x> <y>, ` +
+        `Unknown command: "${cmd}" — try: pick, pyramid <slot> <x> <y>, scan, ` +
         `config pyramid [...], config workspace`,
       );
       return;

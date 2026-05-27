@@ -67,7 +67,7 @@ function AccordionHeader({
   );
 }
 
-type HelpSection = 'pick' | 'pyramid' | 'config' | 'misc';
+type HelpSection = 'pick' | 'pyramid' | 'scan' | 'config' | 'misc';
 
 export default function CommandInput({ onSend, disabled = false }: CommandInputProps) {
   const [value, setValue] = useState('');
@@ -217,6 +217,33 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                   <li><code>1l 1m 1r</code> — bottom tier (3개)</li>
                   <li><code>2l 2r</code> — middle tier (2개)</li>
                   <li><code>3m</code> — top tier (1개)</li>
+                </ul>
+              </div>
+            )}
+
+            {/* ── Scan ────────────────────────────────────────────── */}
+            <AccordionHeader
+              label="Scan"
+              hint="양쪽 두 방향 후 초기 위치 복귀"
+              open={openSection === 'scan'}
+              onClick={() => toggleSection('scan')}
+            />
+            {openSection === 'scan' && (
+              <div style={accordionBodyStyle}>
+                <div style={{ color: 'var(--color-text-tertiary)' }}>
+                  ROS 2 가 PTP 로 <code>초기 위치 → pos1 → pos2 → 초기 위치</code>{' '}
+                  순으로 이동. 각 웨이포인트 도달 후{' '}
+                  <code style={codeStyle}>dwell_sec</code>(기본 5초) 만큼 대기.
+                  인자가 없는 단일 스킬이라 본문은 빈 객체.
+                </div>
+                <div style={accordionSubHeaderStyle}>사용법</div>
+                <ul style={accordionListStyle}>
+                  <li><code style={codeStyle}>scan</code>{'  '}— 스캔 실행 (인자 없음)</li>
+                </ul>
+                <div style={accordionSubHeaderStyle}>참고</div>
+                <ul style={accordionListStyleTertiary}>
+                  <li>pos1/pos2 joint 좌표는 ROS 2 <code>ScanConfig</code> 에서 정의</li>
+                  <li>전체 소요 시간 ≈ PTP 3 회 + dwell 15 초 (기본값 기준)</li>
                 </ul>
               </div>
             )}

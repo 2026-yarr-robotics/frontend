@@ -177,3 +177,15 @@ export async function pyramidSkill(
 ): Promise<PyramidSkillResponse> {
   return post<PyramidSkillResponse>('/api/robot/skill/pyramid', { x, y, slot });
 }
+
+// ── Scan skill ────────────────────────────────────────────────────────────
+
+export interface ScanSkillResponse {
+  success: boolean;
+  skill: string;
+  detail: string;
+}
+
+export async function scanSkill(): Promise<ScanSkillResponse> {
+  return post<ScanSkillResponse>('/api/robot/skill/scan', {});
+}
