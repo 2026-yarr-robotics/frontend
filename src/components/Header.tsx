@@ -248,6 +248,7 @@ export default function Header({
                   {[
                     { label: 'yarr-api', url: 'https://yarr-api.simplyimg.com' },
                     { label: 'yarr-api-24', url: 'https://yarr-api-24.simplyimg.com' },
+                    { label: 'yarr-api-31', url: 'https://yarr-api-31.simplyimg.com' },
                   ].map(({ label, url }) => {
                     const active = baseUrlDraft === url;
                     return (
