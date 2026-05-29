@@ -224,26 +224,37 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             {/* ── Scan ────────────────────────────────────────────── */}
             <AccordionHeader
               label="Scan"
-              hint="양쪽 두 방향 후 초기 위치 복귀"
+              hint="2방향 라인 / 4방향 사각형"
               open={openSection === 'scan'}
               onClick={() => toggleSection('scan')}
             />
             {openSection === 'scan' && (
               <div style={accordionBodyStyle}>
                 <div style={{ color: 'var(--color-text-tertiary)' }}>
-                  ROS 2 가 PTP 로 <code>초기 위치 → pos1 → pos2 → 초기 위치</code>{' '}
-                  순으로 이동. 각 웨이포인트 도달 후{' '}
+                  두 가지 스캔 모드. 인자가 없는 단일 스킬이라 본문은 빈 객체.
+                  각 웨이포인트 도달 후{' '}
                   <code style={codeStyle}>dwell_sec</code>(기본 5초) 만큼 대기.
-                  인자가 없는 단일 스킬이라 본문은 빈 객체.
                 </div>
                 <div style={accordionSubHeaderStyle}>사용법</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>scan</code>{'  '}— 스캔 실행 (인자 없음)</li>
+                  <li>
+                    <code style={codeStyle}>scan</code> /{' '}
+                    <code style={codeStyle}>scan line</code>
+                    {'  '}— 2방향: PTP 로{' '}
+                    <code>초기 위치 → pos1 → pos2 → 초기 위치</code>
+                  </li>
+                  <li>
+                    <code style={codeStyle}>scan square</code>
+                    {'  '}— 4방향 사각형: 카메라 <strong>하향 고정</strong>,
+                    base_link XY 사각형 네 꼭짓점을 <strong>HOME EE 높이</strong>에서
+                    순회 (꼭짓점1→2→3→4→1) 후 시작 위치 복귀
+                  </li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>참고</div>
                 <ul style={accordionListStyleTertiary}>
                   <li>pos1/pos2 joint 좌표는 ROS 2 <code>ScanConfig</code> 에서 정의</li>
-                  <li>전체 소요 시간 ≈ PTP 3 회 + dwell 15 초 (기본값 기준)</li>
+                  <li>사각형 중심/크기는 <code>square_center_x/y</code>, <code>square_size</code> (ROS 2 <code>ScanConfig</code>)</li>
+                  <li><code>scan square</code> 는 변마다 LIN, 실패 시 PTP→OMPL 폴백</li>
                 </ul>
               </div>
             )}

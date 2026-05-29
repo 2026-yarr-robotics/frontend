@@ -189,3 +189,8 @@ export interface ScanSkillResponse {
 export async function scanSkill(): Promise<ScanSkillResponse> {
   return post<ScanSkillResponse>('/api/robot/skill/scan', {});
 }
+
+// 4방향 사각형 스캔 — 카메라 하향 고정, base_link XY 사각형 4 꼭짓점 순회.
+export async function scanSquareSkill(): Promise<ScanSkillResponse> {
+  return post<ScanSkillResponse>('/api/robot/skill/scan_square', {});
+}
