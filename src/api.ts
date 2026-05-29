@@ -3,7 +3,7 @@ const LS_KEY = 'cup_api_base';
 export function getBaseUrl(): string {
   return localStorage.getItem(LS_KEY)
     ?? (import.meta.env.VITE_API_BASE_URL as string | undefined)
-    ?? 'https://yarr-api.simplyimg.com';
+    ?? 'https://yarr-api-31.simplyimg.com';
 }
 
 export function setBaseUrl(url: string) {

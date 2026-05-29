@@ -185,6 +185,24 @@ export default function Header({
           </span>
         </div>
 
+        {/* API base URL pill */}
+        <div
+          title={baseUrl}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 'var(--radius-full)',
+            border: '1px solid var(--color-border-default)',
+            background: 'var(--color-bg-surface-2)',
+            fontFamily: 'var(--font-mono)', fontSize: 11,
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          <span style={{ opacity: 0.6 }}>API</span>
+          <span style={{ color: 'var(--color-cyan)' }}>
+            {baseUrl.replace(/^https?:\/\//, '')}
+          </span>
+        </div>
+
         {/* Right panel toggle */}
         <button
           className="ds-btn ghost icon-only"
