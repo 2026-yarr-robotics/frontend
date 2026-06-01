@@ -13,6 +13,7 @@ import { useJsonWebSocket } from './hooks/useWebSocket';
 import {
   startBringup, stopBringup, stopTask, pickOne,
   getPyramidConfig, setPyramidConfig, pyramidSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
+  startFallenDetection, stopFallenDetection, getFallenCupState, recoverFallenCup,
   getBaseUrl, setBaseUrl,
   type EePosition, type PyramidSlot,
 } from './api';
@@ -344,6 +345,105 @@ export default function App() {
       return;
     }
 
+    // ── fallen <detect|state|recovery> ───────────────────────────────
+    // fallen detect start [--conf C] [--imgsz N] [--no-depth]
+    //                     → YOLO 인식 노드 시작 (상시 서비스, hand 카메라)
+    // fallen detect stop  → 인식 노드 중지
+    // fallen state        → 인식 실행 여부 + 최근 인식 결과
+    // fallen recovery [drop|place] [--multi] [--dry] [--sim]
+    //                     → 컵 세우기 태스크 (fallen_cup_recovery launch).
+    //                       진행/로그는 WS가 자동 표시, 중지는 Abort 버튼.
+    if (/^fallen\b/i.test(norm)) {
+      const sub = (tokens[1] ?? '').toLowerCase();
+
+      if (sub === 'detect') {
+        const action = (tokens[2] ?? '').toLowerCase();
+        if (action === 'start') {
+          const confM = norm.match(/--conf\s+(\d+(?:\.\d+)?)/i);
+          const imgszM = norm.match(/--imgsz\s+(\d+)/i);
+          const noDepth = /--no-depth\b/i.test(norm);
+          addLog('INFO', 'Starting fallen-cup detection…');
+          try {
+            const r = await startFallenDetection({
+              ...(confM ? { conf: Number(confM[1]) } : {}),
+              ...(imgszM ? { imgsz: Number(imgszM[1]) } : {}),
+              ...(noDepth ? { useDepth: false } : {}),
+            });
+            addLog('OK', `fallen detection started (${r.name}: ${r.status})`);
+          } catch (e) {
+            addLog('ERR', `fallen detect start: ${(e as Error).message}`);
+          }
+        } else if (action === 'stop') {
+          try {
+            await stopFallenDetection();
+            addLog('OK', 'fallen detection stopped');
+          } catch (e) {
+            addLog('ERR', `fallen detect stop: ${(e as Error).message}`);
+          }
+        } else {
+          addLog('WARN', 'usage: fallen detect start [--conf C] [--imgsz N] [--no-depth]  ·  fallen detect stop');
+        }
+        return;
+      }
+
+      if (sub === 'state') {
+        try {
+          const s = await getFallenCupState();
+          addLog('OK',
+            `detection=${s.detection_running ? 'running' : 'stopped'} · ` +
+            `fallen cups=${s.count} · ` +
+            `grasp_pose=${s.grasp_pose ? 'fresh' : 'none'}`,
+          );
+          for (const c of s.cups) {
+            const pos = c.position
+              ? `(${c.position.x.toFixed(3)}, ${c.position.y.toFixed(3)}, ${c.position.z.toFixed(3)})`
+              : 'no depth';
+            addLog('INFO',
+              `  cup ${c.cup_id}: yaw=${(c.yaw * 180 / Math.PI).toFixed(1)}° ` +
+              `conf=${c.confidence.toFixed(2)} pos=${pos}`,
+            );
+          }
+        } catch (e) {
+          addLog('ERR', `fallen state: ${(e as Error).message}`);
+        }
+        return;
+      }
+
+      if (sub === 'recovery' || sub === 'recover') {
+        const mode = tokens[2] && /^(drop|place)$/i.test(tokens[2])
+          ? tokens[2].toLowerCase() as 'drop' | 'place'
+          : 'drop';
+        const multiCup = /--multi\b/i.test(norm);
+        const dryRun = /--dry\b/i.test(norm);
+        const sim = /--sim\b/i.test(norm);
+        if (!sim && (!wsConnected || !robotOnline)) {
+          addLog('WARN', 'Robot must be online to run fallen-cup recovery');
+          return;
+        }
+        addLog('INFO',
+          `fallen recovery mode=${mode}` +
+          `${multiCup ? ' --multi' : ''}${dryRun ? ' --dry' : ''}${sim ? ' --sim' : ''}…`,
+        );
+        setTaskStatus('executing');
+        try {
+          const r = await recoverFallenCup({ mode, multiCup, dryRun, sim });
+          addLog('OK', `fallen recovery started (${r.name}: ${r.status}) — 진행 상황은 로그 피드 참조`);
+          // 1회 실행 launch 태스크: 상태/로그는 /ws/robot/state · /ws/task/log 가
+          // 소유한다 (bringup 패턴). 여기서 idle 로 되돌리지 않음.
+        } catch (e) {
+          addLog('ERR', `fallen recovery: ${(e as Error).message}`);
+          setTaskStatus('idle');
+        }
+        return;
+      }
+
+      addLog('WARN',
+        'usage: fallen detect start|stop  ·  fallen state  ·  ' +
+        'fallen recovery [drop|place] [--multi] [--dry] [--sim]',
+      );
+      return;
+    }
+
     // pick [N] — use the live EE xy from the WS status stream as the
     // pick target. Useful for "pick whatever the arm is hovering over".
     const barePick = norm.match(/^pick(?:\s+(\d+))?\s*$/i);
@@ -379,7 +479,7 @@ export default function App() {
     if (!/^pick\b/i.test(norm)) {
       addLog('WARN',
         `Unknown command: "${cmd}" — try: pick, pyramid <slot> <x> <y>, scan [line|square], ` +
-        `config pyramid [...], config workspace`,
+        `fallen detect|state|recovery, config pyramid [...], config workspace`,
       );
       return;
     }

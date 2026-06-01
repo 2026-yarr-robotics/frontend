@@ -194,3 +194,91 @@ export async function scanSkill(): Promise<ScanSkillResponse> {
 export async function scanSquareSkill(): Promise<ScanSkillResponse> {
   return post<ScanSkillResponse>('/api/robot/skill/scan_square', {});
 }
+
+// ── Fallen cup ────────────────────────────────────────────────────────────
+// fallen-cup-recovery 통합: YOLO 인식(상시 서비스) + 컵 세우기(1회 태스크).
+
+export interface FallenCupItem {
+  cup_id: number;
+  yaw: number;
+  grip_pixel: { x: number; y: number };
+  confidence: number;
+  /** 카메라 optical frame 3D 좌표; depth 실패 시 null */
+  position: EePosition | null;
+}
+
+export interface FallenCupState {
+  detection_running: boolean;
+  count: number;
+  cups: FallenCupItem[];
+  pose2d: {
+    top: { x: number; y: number };
+    bottom: { x: number; y: number };
+    direction: { x: number; y: number };
+    yaw: number;
+    grip: { x: number; y: number };
+    confidence: number;
+    top_width: number;
+    bottom_width: number;
+  } | null;
+  grasp_pose: {
+    frame_id: string;
+    position: EePosition;
+    orientation: { x: number; y: number; z: number; w: number };
+  } | null;
+}
+
+export interface FallenDetectStartOptions {
+  conf?: number;
+  imgsz?: number;
+  useDepth?: boolean;
+  weightsPath?: string;
+}
+
+export interface TaskStartedResponse {
+  name: string;
+  status: string;
+  pid: number | null;
+}
+
+// YOLO 인식 노드 시작 (상시 서비스, hand 카메라 사용).
+export async function startFallenDetection(
+  opts: FallenDetectStartOptions = {},
+): Promise<TaskStartedResponse> {
+  return post<TaskStartedResponse>('/api/robot/fallen-cup/detection/start', {
+    ...(opts.conf !== undefined ? { conf: opts.conf } : {}),
+    ...(opts.imgsz !== undefined ? { imgsz: opts.imgsz } : {}),
+    ...(opts.useDepth !== undefined ? { use_depth: opts.useDepth } : {}),
+    ...(opts.weightsPath !== undefined ? { weights_path: opts.weightsPath } : {}),
+  });
+}
+
+export async function stopFallenDetection() {
+  return post('/api/robot/fallen-cup/detection/stop', {});
+}
+
+export async function getFallenCupState(): Promise<FallenCupState> {
+  return get<FallenCupState>('/api/robot/fallen-cup/state');
+}
+
+export interface FallenRecoveryOptions {
+  /** drop: 그 자리에 놓기 / place: 작업공간으로 옮겨 세우기 */
+  mode?: 'drop' | 'place';
+  multiCup?: boolean;
+  dryRun?: boolean;
+  sim?: boolean;
+}
+
+// 넘어진 컵 세우기 태스크 시작 (1회 실행 후 종료).
+// 진행 상황은 /ws/task/log · /ws/robot/state 로 모니터링.
+// 중지는 stopTask('fallen_cup_recovery').
+export async function recoverFallenCup(
+  opts: FallenRecoveryOptions = {},
+): Promise<TaskStartedResponse> {
+  return post<TaskStartedResponse>('/api/robot/fallen-cup/recovery', {
+    mode: opts.mode ?? 'drop',
+    multi_cup: opts.multiCup ?? false,
+    dry_run: opts.dryRun ?? false,
+    sim: opts.sim ?? false,
+  });
+}

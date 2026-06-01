@@ -67,7 +67,7 @@ function AccordionHeader({
   );
 }
 
-type HelpSection = 'pick' | 'pyramid' | 'scan' | 'config' | 'misc';
+type HelpSection = 'pick' | 'pyramid' | 'scan' | 'fallen' | 'config' | 'misc';
 
 export default function CommandInput({ onSend, disabled = false }: CommandInputProps) {
   const [value, setValue] = useState('');
@@ -255,6 +255,44 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                   <li>pos1/pos2 joint 좌표는 ROS 2 <code>ScanConfig</code> 에서 정의</li>
                   <li>사각형 중심/크기는 <code>square_center_x/y</code>, <code>square_size</code> (ROS 2 <code>ScanConfig</code>)</li>
                   <li><code>scan square</code> 는 변마다 LIN, 실패 시 PTP→OMPL 폴백</li>
+                </ul>
+              </div>
+            )}
+
+            {/* ── Fallen Cup ──────────────────────────────────────── */}
+            <AccordionHeader
+              label="Fallen Cup"
+              hint="넘어진 컵 인식 · 세우기"
+              open={openSection === 'fallen'}
+              onClick={() => toggleSection('fallen')}
+            />
+            {openSection === 'fallen' && (
+              <div style={accordionBodyStyle}>
+                <div style={{ color: 'var(--color-text-tertiary)' }}>
+                  YOLO-seg 가 hand 카메라로 넘어진 컵을 인식하고, 로봇이 잡아 세운다.
+                  인식(상시 서비스)을 먼저 켜고 → 세우기 태스크를 실행.
+                </div>
+                <div style={accordionSubHeaderStyle}>인식 (detection)</div>
+                <ul style={accordionListStyle}>
+                  <li><code style={codeStyle}>fallen detect start</code>{'  '}— YOLO 인식 노드 시작</li>
+                  <li><code style={codeStyle}>fallen detect start --conf 0.7 --imgsz 1280</code>{'  '}— 옵션 지정</li>
+                  <li><code style={codeStyle}>fallen detect stop</code>{'  '}— 인식 노드 중지</li>
+                  <li><code style={codeStyle}>fallen state</code>{'  '}— 인식 상태 + 감지된 컵 목록</li>
+                </ul>
+                <div style={accordionSubHeaderStyle}>세우기 (recovery)</div>
+                <ul style={accordionListStyle}>
+                  <li><code style={codeStyle}>fallen recovery</code>{'  '}— drop 모드 (그 자리에 세우기)</li>
+                  <li><code style={codeStyle}>fallen recovery place</code>{'  '}— 작업공간으로 옮겨 세우기</li>
+                  <li><code style={codeStyle}>fallen recovery place --multi</code>{'  '}— 여러 컵 순차 처리</li>
+                  <li><code style={codeStyle}>fallen recovery drop --dry</code>{'  '}— approach 까지만 (그리퍼 동작 X)</li>
+                  <li><code style={codeStyle}>fallen recovery drop --sim</code>{'  '}— MoveIt virtual 시뮬레이션</li>
+                </ul>
+                <div style={accordionSubHeaderStyle}>참고</div>
+                <ul style={accordionListStyleTertiary}>
+                  <li>1회 실행 태스크 — 완료 후 자동 종료, 진행 로그는 로그 피드에 표시</li>
+                  <li>중지는 상단 <strong>Abort</strong> 버튼 (task: <code>fallen_cup_recovery</code>)</li>
+                  <li>실행 시 <code>skill_api</code> 가 자동 정지됨 (MoveItPy 컨트롤러 경합 방지) — 다음 pick 에서 자동 재시작</li>
+                  <li>YOLO weights(best.pt) 는 서버 호스트에 별도 배치 필요</li>
                 </ul>
               </div>
             )}
