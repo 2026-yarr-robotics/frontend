@@ -347,7 +347,7 @@ export default function App() {
 
     // ── fallen <state|recovery> ──────────────────────────────────────
     // fallen state        → 인식 실행 여부 + 최근 인식 결과
-    // fallen recovery [drop|place] [--multi] [--dry] [--sim]
+    // fallen recovery [drop|place] [--single] [--dry] [--sim]  (기본 multi-cup)
     //                     → 컵 세우기 태스크 (fallen_cup_recovery launch).
     //                       진행/로그는 WS가 자동 표시, 중지는 Abort 버튼.
     if (/^fallen\b/i.test(norm)) {
@@ -380,7 +380,8 @@ export default function App() {
         const mode = tokens[2] && /^(drop|place)$/i.test(tokens[2])
           ? tokens[2].toLowerCase() as 'drop' | 'place'
           : 'drop';
-        const multiCup = /--multi\b/i.test(norm);
+        // 기본 multi-cup. --single 로 단일 컵만 처리.
+        const multiCup = !/--single\b/i.test(norm);
         const dryRun = /--dry\b/i.test(norm);
         const sim = /--sim\b/i.test(norm);
         if (!sim && (!wsConnected || !robotOnline)) {
@@ -389,7 +390,7 @@ export default function App() {
         }
         addLog('INFO',
           `fallen recovery mode=${mode}` +
-          `${multiCup ? ' --multi' : ''}${dryRun ? ' --dry' : ''}${sim ? ' --sim' : ''}…`,
+          `${multiCup ? '' : ' --single'}${dryRun ? ' --dry' : ''}${sim ? ' --sim' : ''}…`,
         );
         setTaskStatus('executing');
         try {
@@ -406,7 +407,7 @@ export default function App() {
 
       addLog('WARN',
         'usage: fallen state  ·  ' +
-        'fallen recovery [drop|place] [--multi] [--dry] [--sim]',
+        'fallen recovery [drop|place] [--single] [--dry] [--sim]',
       );
       return;
     }

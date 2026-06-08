@@ -278,9 +278,9 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 </ul>
                 <div style={accordionSubHeaderStyle}>세우기 (recovery)</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>fallen recovery</code>{'  '}— drop 모드 (그 자리에 세우기)</li>
-                  <li><code style={codeStyle}>fallen recovery place</code>{'  '}— 작업공간으로 옮겨 세우기</li>
-                  <li><code style={codeStyle}>fallen recovery place --multi</code>{'  '}— 여러 컵 순차 처리</li>
+                  <li><code style={codeStyle}>fallen recovery drop</code>{'  '}— drop 모드 (그 자리에 세우기) · 여러 컵 순차 (기본)</li>
+                  <li><code style={codeStyle}>fallen recovery place</code>{'  '}— 작업공간으로 옮겨 세우기 · 여러 컵 순차 (기본)</li>
+                  <li><code style={codeStyle}>fallen recovery place --single</code>{'  '}— 단일 컵만 처리</li>
                   <li><code style={codeStyle}>fallen recovery drop --dry</code>{'  '}— approach 까지만 (그리퍼 동작 X)</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>참고</div>
