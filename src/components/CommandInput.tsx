@@ -269,14 +269,11 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             {openSection === 'fallen' && (
               <div style={accordionBodyStyle}>
                 <div style={{ color: 'var(--color-text-tertiary)' }}>
-                  YOLO-seg 가 hand 카메라로 넘어진 컵을 인식하고, 로봇이 잡아 세운다.
-                  인식(상시 서비스)을 먼저 켜고 → 세우기 태스크를 실행.
+                  YOLO-seg 가 카메라로 넘어진 컵을 인식하고(상시 서비스, 서버에서
+                  자동 기동), 로봇이 잡아 세운다. 인식 상태를 확인하고 → 세우기 실행.
                 </div>
-                <div style={accordionSubHeaderStyle}>인식 (detection)</div>
+                <div style={accordionSubHeaderStyle}>상태 (state)</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>fallen detect start</code>{'  '}— YOLO 인식 노드 시작</li>
-                  <li><code style={codeStyle}>fallen detect start --conf 0.7 --imgsz 1280</code>{'  '}— 옵션 지정</li>
-                  <li><code style={codeStyle}>fallen detect stop</code>{'  '}— 인식 노드 중지</li>
                   <li><code style={codeStyle}>fallen state</code>{'  '}— 인식 상태 + 감지된 컵 목록</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>세우기 (recovery)</div>
@@ -292,7 +289,6 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                   <li>1회 실행 태스크 — 완료 후 자동 종료, 진행 로그는 로그 피드에 표시</li>
                   <li>중지는 상단 <strong>Abort</strong> 버튼 (task: <code>fallen_cup_recovery</code>)</li>
                   <li>실행 시 <code>skill_api</code> 가 자동 정지됨 (MoveItPy 컨트롤러 경합 방지) — 다음 pick 에서 자동 재시작</li>
-                  <li>YOLO weights(best.pt) 는 서버 호스트에 별도 배치 필요</li>
                 </ul>
               </div>
             )}

@@ -13,7 +13,7 @@ import { useJsonWebSocket } from './hooks/useWebSocket';
 import {
   startBringup, stopBringup, stopTask, pickOne,
   getPyramidConfig, setPyramidConfig, pyramidSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
-  startFallenDetection, stopFallenDetection, getFallenCupState, recoverFallenCup,
+  getFallenCupState, recoverFallenCup,
   getBaseUrl, setBaseUrl,
   type EePosition, type PyramidSlot,
 } from './api';
@@ -345,46 +345,13 @@ export default function App() {
       return;
     }
 
-    // ── fallen <detect|state|recovery> ───────────────────────────────
-    // fallen detect start [--conf C] [--imgsz N] [--no-depth]
-    //                     → YOLO 인식 노드 시작 (상시 서비스, hand 카메라)
-    // fallen detect stop  → 인식 노드 중지
+    // ── fallen <state|recovery> ──────────────────────────────────────
     // fallen state        → 인식 실행 여부 + 최근 인식 결과
     // fallen recovery [drop|place] [--multi] [--dry] [--sim]
     //                     → 컵 세우기 태스크 (fallen_cup_recovery launch).
     //                       진행/로그는 WS가 자동 표시, 중지는 Abort 버튼.
     if (/^fallen\b/i.test(norm)) {
       const sub = (tokens[1] ?? '').toLowerCase();
-
-      if (sub === 'detect') {
-        const action = (tokens[2] ?? '').toLowerCase();
-        if (action === 'start') {
-          const confM = norm.match(/--conf\s+(\d+(?:\.\d+)?)/i);
-          const imgszM = norm.match(/--imgsz\s+(\d+)/i);
-          const noDepth = /--no-depth\b/i.test(norm);
-          addLog('INFO', 'Starting fallen-cup detection…');
-          try {
-            const r = await startFallenDetection({
-              ...(confM ? { conf: Number(confM[1]) } : {}),
-              ...(imgszM ? { imgsz: Number(imgszM[1]) } : {}),
-              ...(noDepth ? { useDepth: false } : {}),
-            });
-            addLog('OK', `fallen detection started (${r.name}: ${r.status})`);
-          } catch (e) {
-            addLog('ERR', `fallen detect start: ${(e as Error).message}`);
-          }
-        } else if (action === 'stop') {
-          try {
-            await stopFallenDetection();
-            addLog('OK', 'fallen detection stopped');
-          } catch (e) {
-            addLog('ERR', `fallen detect stop: ${(e as Error).message}`);
-          }
-        } else {
-          addLog('WARN', 'usage: fallen detect start [--conf C] [--imgsz N] [--no-depth]  ·  fallen detect stop');
-        }
-        return;
-      }
 
       if (sub === 'state') {
         try {
@@ -438,7 +405,7 @@ export default function App() {
       }
 
       addLog('WARN',
-        'usage: fallen detect start|stop  ·  fallen state  ·  ' +
+        'usage: fallen state  ·  ' +
         'fallen recovery [drop|place] [--multi] [--dry] [--sim]',
       );
       return;
@@ -479,7 +446,7 @@ export default function App() {
     if (!/^pick\b/i.test(norm)) {
       addLog('WARN',
         `Unknown command: "${cmd}" — try: pick, pyramid <slot> <x> <y>, scan [line|square], ` +
-        `fallen detect|state|recovery, config pyramid [...], config workspace`,
+        `fallen state|recovery, config pyramid [...], config workspace`,
       );
       return;
     }

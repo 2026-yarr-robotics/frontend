@@ -228,33 +228,10 @@ export interface FallenCupState {
   } | null;
 }
 
-export interface FallenDetectStartOptions {
-  conf?: number;
-  imgsz?: number;
-  useDepth?: boolean;
-  weightsPath?: string;
-}
-
 export interface TaskStartedResponse {
   name: string;
   status: string;
   pid: number | null;
-}
-
-// YOLO 인식 노드 시작 (상시 서비스, hand 카메라 사용).
-export async function startFallenDetection(
-  opts: FallenDetectStartOptions = {},
-): Promise<TaskStartedResponse> {
-  return post<TaskStartedResponse>('/api/robot/fallen-cup/detection/start', {
-    ...(opts.conf !== undefined ? { conf: opts.conf } : {}),
-    ...(opts.imgsz !== undefined ? { imgsz: opts.imgsz } : {}),
-    ...(opts.useDepth !== undefined ? { use_depth: opts.useDepth } : {}),
-    ...(opts.weightsPath !== undefined ? { weights_path: opts.weightsPath } : {}),
-  });
-}
-
-export async function stopFallenDetection() {
-  return post('/api/robot/fallen-cup/detection/stop', {});
 }
 
 export async function getFallenCupState(): Promise<FallenCupState> {
