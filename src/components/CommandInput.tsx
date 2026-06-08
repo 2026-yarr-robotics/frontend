@@ -282,7 +282,6 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                   <li><code style={codeStyle}>fallen recovery place</code>{'  '}— 작업공간으로 옮겨 세우기</li>
                   <li><code style={codeStyle}>fallen recovery place --multi</code>{'  '}— 여러 컵 순차 처리</li>
                   <li><code style={codeStyle}>fallen recovery drop --dry</code>{'  '}— approach 까지만 (그리퍼 동작 X)</li>
-                  <li><code style={codeStyle}>fallen recovery drop --sim</code>{'  '}— MoveIt virtual 시뮬레이션</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>참고</div>
                 <ul style={accordionListStyleTertiary}>
