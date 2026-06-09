@@ -274,3 +274,27 @@ export async function recoverFallenCup(
     sim: opts.sim ?? false,
   });
 }
+
+export interface FallenDetectionOptions {
+  conf?: number;
+  imgsz?: number;
+  useDepth?: boolean;
+  weightsPath?: string;
+}
+
+// 넘어진 컵 YOLO 인식 서비스(상시) 시작 — 생략한 필드는 서버 기본값.
+export async function startFallenCupDetection(
+  opts: FallenDetectionOptions = {},
+): Promise<TaskStartedResponse> {
+  const body: Record<string, unknown> = {};
+  if (opts.conf !== undefined) body.conf = opts.conf;
+  if (opts.imgsz !== undefined) body.imgsz = opts.imgsz;
+  if (opts.useDepth !== undefined) body.use_depth = opts.useDepth;
+  if (opts.weightsPath !== undefined) body.weights_path = opts.weightsPath;
+  return post<TaskStartedResponse>('/api/robot/fallen-cup/detection/start', body);
+}
+
+// 넘어진 컵 인식 서비스 중지 (로봇 모션 정지 없음).
+export async function stopFallenCupDetection(): Promise<{ name: string; status: string }> {
+  return post<{ name: string; status: string }>('/api/robot/fallen-cup/detection/stop', {});
+}

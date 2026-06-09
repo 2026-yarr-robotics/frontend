@@ -14,6 +14,7 @@ import {
   startBringup, stopBringup, stopTask, pickOne,
   getPyramidConfig, setPyramidConfig, pyramidSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
   getFallenCupState, recoverFallenCup,
+  startFallenCupDetection, stopFallenCupDetection,
   sendUserCommand, moveRobot,
   getBaseUrl, setBaseUrl,
   type EePosition, type PyramidSlot,
@@ -31,6 +32,7 @@ const SLASH_HELP: readonly string[] = [
   '  /scan [line|square] — 2방향 라인 / 4방향 사각형 스캔',
   '  /move home — 로봇을 HOME(park) 위치로 이동 (0.45, 0, 0.45)',
   '  /fallen state — 넘어진 컵 인식 상태 조회',
+  '  /fallen detect [start|stop] — 넘어진 컵 YOLO 인식 서비스 on/off',
   '  /fallen recovery [drop|place] [--single] [--dry] [--sim] — 넘어진 컵 세우기',
   '  /config pyramid [center x y | degree d | pick_z z] — 피라미드 설정 조회/변경',
   '  /config workspace — 워크스페이스 한계 조회',
@@ -309,7 +311,7 @@ export default function App() {
           const x = Number(tokens[3]);
           const y = Number(tokens[4]);
           if (!Number.isFinite(x) || !Number.isFinite(y)) {
-            addLog('WARN', 'usage: config pyramid center <x> <y>');
+            addLog('WARN', 'usage: /config pyramid center <x> <y>');
             return;
           }
           const c = await setPyramidConfig({ center: { x, y } });
@@ -317,7 +319,7 @@ export default function App() {
         } else if (sub === 'degree') {
           const d = Number(tokens[3]);
           if (!Number.isFinite(d)) {
-            addLog('WARN', 'usage: config pyramid degree <deg>');
+            addLog('WARN', 'usage: /config pyramid degree <deg>');
             return;
           }
           const c = await setPyramidConfig({ degree: d });
@@ -325,13 +327,13 @@ export default function App() {
         } else if (sub === 'pick_z') {
           const z = Number(tokens[3]);
           if (!Number.isFinite(z)) {
-            addLog('WARN', 'usage: config pyramid pick_z <z>');
+            addLog('WARN', 'usage: /config pyramid pick_z <z>');
             return;
           }
           const c = await setPyramidConfig({ pick_z: z });
           addLog('OK', `pick_z=${c.pick_z.toFixed(3)}`);
         } else {
-          addLog('WARN', 'usage: config pyramid [center <x> <y> | degree <d> | pick_z <z>]');
+          addLog('WARN', 'usage: /config pyramid [center <x> <y> | degree <d> | pick_z <z>]');
         }
       } catch (e) {
         addLog('ERR', `config pyramid: ${(e as Error).message}`);
@@ -344,7 +346,7 @@ export default function App() {
     if (/^pyramid\b/i.test(norm)) {
       const slot = tokens[1];
       if (!slot || !isPyramidSlot(slot)) {
-        addLog('WARN', 'usage: pyramid <1l|1m|1r|2l|2r|3m> [x y]');
+        addLog('WARN', 'usage: /pyramid <1l|1m|1r|2l|2r|3m> [x y]');
         return;
       }
       let x: number;
@@ -353,7 +355,7 @@ export default function App() {
         x = Number(tokens[2]);
         y = Number(tokens[3]);
         if (!Number.isFinite(x) || !Number.isFinite(y)) {
-          addLog('WARN', 'usage: pyramid <slot> [x y] — x, y must be numbers');
+          addLog('WARN', 'usage: /pyramid <slot> [x y] — x, y must be numbers');
           return;
         }
       } else {
@@ -440,6 +442,29 @@ export default function App() {
         return;
       }
 
+      if (sub === 'detect' || sub === 'detection') {
+        // fallen detect [start|stop] → YOLO 인식 서비스(fallen_cup_detect) on/off.
+        const action = (tokens[2] ?? 'start').toLowerCase();
+        if (action === 'start') {
+          try {
+            const r = await startFallenCupDetection();
+            addLog('OK', `fallen detection started (${r.name}: ${r.status})`);
+          } catch (e) {
+            addLog('ERR', `fallen detect start: ${(e as Error).message}`);
+          }
+        } else if (action === 'stop') {
+          try {
+            const r = await stopFallenCupDetection();
+            addLog('OK', `fallen detection stopped (${r.name}: ${r.status})`);
+          } catch (e) {
+            addLog('ERR', `fallen detect stop: ${(e as Error).message}`);
+          }
+        } else {
+          addLog('WARN', 'usage: /fallen detect [start|stop]');
+        }
+        return;
+      }
+
       if (sub === 'recovery' || sub === 'recover') {
         const mode = tokens[2] && /^(drop|place)$/i.test(tokens[2])
           ? tokens[2].toLowerCase() as 'drop' | 'place'
@@ -470,8 +495,8 @@ export default function App() {
       }
 
       addLog('WARN',
-        'usage: fallen state  ·  ' +
-        'fallen recovery [drop|place] [--single] [--dry] [--sim]',
+        'usage: /fallen state  ·  /fallen detect [start|stop]  ·  ' +
+        '/fallen recovery [drop|place] [--single] [--dry] [--sim]',
       );
       return;
     }

@@ -164,20 +164,20 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 </div>
                 <div style={accordionSubHeaderStyle}>사용법</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>pick</code>{'  '}— 현재 EE xy 위치에서 <code>--cup 1</code></li>
-                  <li><code style={codeStyle}>pick N</code>{'  '}— 현재 EE xy 위치에서 nested 컵 N 개</li>
-                  <li><code style={codeStyle}>pick -x X -y Y -z Z</code>{'  '}— Z 를 명시 (컵 윗면 중앙)</li>
-                  <li><code style={codeStyle}>pick -x X -y Y --cup N</code>{'  '}— nested 컵 N 개 → Z 는 <strong>ROS 2 가 자동 계산</strong></li>
-                  <li><code style={codeStyle}>pick -x X -y Y</code>{'  '}— <code>--cup 1</code> 과 동일</li>
-                  <li><code style={codeStyle}>pick X Y Z</code>{'  '}— positional, Z 명시</li>
-                  <li><code style={codeStyle}>pick X Y</code>{'  '}— positional, <code>--cup 1</code> 과 동일</li>
+                  <li><code style={codeStyle}>/pick</code>{'  '}— 현재 EE xy 위치에서 <code>--cup 1</code></li>
+                  <li><code style={codeStyle}>/pick N</code>{'  '}— 현재 EE xy 위치에서 nested 컵 N 개</li>
+                  <li><code style={codeStyle}>/pick -x X -y Y -z Z</code>{'  '}— Z 를 명시 (컵 윗면 중앙)</li>
+                  <li><code style={codeStyle}>/pick -x X -y Y --cup N</code>{'  '}— nested 컵 N 개 → Z 는 <strong>ROS 2 가 자동 계산</strong></li>
+                  <li><code style={codeStyle}>/pick -x X -y Y</code>{'  '}— <code>--cup 1</code> 과 동일</li>
+                  <li><code style={codeStyle}>/pick X Y Z</code>{'  '}— positional, Z 명시</li>
+                  <li><code style={codeStyle}>/pick X Y</code>{'  '}— positional, <code>--cup 1</code> 과 동일</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>예시</div>
                 <ul style={accordionListStyleTertiary}>
-                  <li><code style={codeStyle}>pick</code> — 현재 EE xy, 1 컵</li>
-                  <li><code style={codeStyle}>pick 2</code> — 현재 EE xy, 2 컵 nested</li>
-                  <li><code style={codeStyle}>pick -x 0.45 -y -0.12 -z 0.05</code> — 명시 Z</li>
-                  <li><code style={codeStyle}>pick -x 0.45 -y -0.12 --cup 6</code> — 6 컵 스택 상단</li>
+                  <li><code style={codeStyle}>/pick</code> — 현재 EE xy, 1 컵</li>
+                  <li><code style={codeStyle}>/pick 2</code> — 현재 EE xy, 2 컵 nested</li>
+                  <li><code style={codeStyle}>/pick -x 0.45 -y -0.12 -z 0.05</code> — 명시 Z</li>
+                  <li><code style={codeStyle}>/pick -x 0.45 -y -0.12 --cup 6</code> — 6 컵 스택 상단</li>
                 </ul>
               </div>
             )}
@@ -198,19 +198,19 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 <div style={accordionSubHeaderStyle}>사용법</div>
                 <ul style={accordionListStyle}>
                   <li>
-                    <code style={codeStyle}>pyramid &lt;slot&gt;</code>
+                    <code style={codeStyle}>/pyramid &lt;slot&gt;</code>
                     {'  '}— 현재 EE xy 위치에서 pick → slot 으로 place
                   </li>
                   <li>
-                    <code style={codeStyle}>pyramid &lt;slot&gt; X Y</code>
+                    <code style={codeStyle}>/pyramid &lt;slot&gt; X Y</code>
                     {'  '}— 명시 pick 좌표
                   </li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>예시</div>
                 <ul style={accordionListStyleTertiary}>
-                  <li><code style={codeStyle}>pyramid 1l</code> — 현재 EE 에서 → 1l 슬롯</li>
-                  <li><code style={codeStyle}>pyramid 2r</code> — 현재 EE 에서 → 2r 슬롯</li>
-                  <li><code style={codeStyle}>pyramid 3m 0.40 0.10</code> — (0.40, 0.10) 에서 → 3m</li>
+                  <li><code style={codeStyle}>/pyramid 1l</code> — 현재 EE 에서 → 1l 슬롯</li>
+                  <li><code style={codeStyle}>/pyramid 2r</code> — 현재 EE 에서 → 2r 슬롯</li>
+                  <li><code style={codeStyle}>/pyramid 3m 0.40 0.10</code> — (0.40, 0.10) 에서 → 3m</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>슬롯</div>
                 <ul style={accordionListStyleTertiary}>
@@ -238,13 +238,13 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 <div style={accordionSubHeaderStyle}>사용법</div>
                 <ul style={accordionListStyle}>
                   <li>
-                    <code style={codeStyle}>scan</code> /{' '}
-                    <code style={codeStyle}>scan line</code>
+                    <code style={codeStyle}>/scan</code> /{' '}
+                    <code style={codeStyle}>/scan line</code>
                     {'  '}— 2방향: PTP 로{' '}
                     <code>초기 위치 → pos1 → pos2 → 초기 위치</code>
                   </li>
                   <li>
-                    <code style={codeStyle}>scan square</code>
+                    <code style={codeStyle}>/scan square</code>
                     {'  '}— 4방향 사각형: 카메라 <strong>하향 고정</strong>,
                     base_link XY 사각형 네 꼭짓점을 <strong>HOME EE 높이</strong>에서
                     순회 (꼭짓점1→2→3→4→1) 후 시작 위치 복귀
@@ -254,7 +254,7 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 <ul style={accordionListStyleTertiary}>
                   <li>pos1/pos2 joint 좌표는 ROS 2 <code>ScanConfig</code> 에서 정의</li>
                   <li>사각형 중심/크기는 <code>square_center_x/y</code>, <code>square_size</code> (ROS 2 <code>ScanConfig</code>)</li>
-                  <li><code>scan square</code> 는 변마다 LIN, 실패 시 PTP→OMPL 폴백</li>
+                  <li><code>/scan square</code> 는 변마다 LIN, 실패 시 PTP→OMPL 폴백</li>
                 </ul>
               </div>
             )}
@@ -274,14 +274,16 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 </div>
                 <div style={accordionSubHeaderStyle}>상태 (state)</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>fallen state</code>{'  '}— 인식 상태 + 감지된 컵 목록</li>
+                  <li><code style={codeStyle}>/fallen state</code>{'  '}— 인식 상태 + 감지된 컵 목록</li>
+                  <li><code style={codeStyle}>/fallen detect start</code>{'  '}— YOLO 인식 서비스 시작 (fallen_cup_detect)</li>
+                  <li><code style={codeStyle}>/fallen detect stop</code>{'  '}— YOLO 인식 서비스 중지</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>세우기 (recovery)</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>fallen recovery drop</code>{'  '}— drop 모드 (그 자리에 세우기) · 여러 컵 순차 (기본)</li>
-                  <li><code style={codeStyle}>fallen recovery place</code>{'  '}— 작업공간으로 옮겨 세우기 · 여러 컵 순차 (기본)</li>
-                  <li><code style={codeStyle}>fallen recovery place --single</code>{'  '}— 단일 컵만 처리</li>
-                  <li><code style={codeStyle}>fallen recovery drop --dry</code>{'  '}— approach 까지만 (그리퍼 동작 X)</li>
+                  <li><code style={codeStyle}>/fallen recovery drop</code>{'  '}— drop 모드 (그 자리에 세우기) · 여러 컵 순차 (기본)</li>
+                  <li><code style={codeStyle}>/fallen recovery place</code>{'  '}— 작업공간으로 옮겨 세우기 · 여러 컵 순차 (기본)</li>
+                  <li><code style={codeStyle}>/fallen recovery place --single</code>{'  '}— 단일 컵만 처리</li>
+                  <li><code style={codeStyle}>/fallen recovery drop --dry</code>{'  '}— approach 까지만 (그리퍼 동작 X)</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>참고</div>
                 <ul style={accordionListStyleTertiary}>
@@ -303,14 +305,14 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               <div style={accordionBodyStyle}>
                 <div style={accordionSubHeaderStyle}>피라미드</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>config pyramid</code>{'  '}— 현재 cp / degree / pick_z + 6 slot 좌표</li>
-                  <li><code style={codeStyle}>config pyramid center X Y</code>{'  '}— 중심 좌표 갱신</li>
-                  <li><code style={codeStyle}>config pyramid degree D</code>{'  '}— 행 방향 yaw (deg, 0~360, +x 기준 반시계)</li>
-                  <li><code style={codeStyle}>config pyramid pick_z Z</code>{'  '}— 그리퍼 pick Z (base_link, m)</li>
+                  <li><code style={codeStyle}>/config pyramid</code>{'  '}— 현재 cp / degree / pick_z + 6 slot 좌표</li>
+                  <li><code style={codeStyle}>/config pyramid center X Y</code>{'  '}— 중심 좌표 갱신</li>
+                  <li><code style={codeStyle}>/config pyramid degree D</code>{'  '}— 행 방향 yaw (deg, 0~360, +x 기준 반시계)</li>
+                  <li><code style={codeStyle}>/config pyramid pick_z Z</code>{'  '}— 그리퍼 pick Z (base_link, m)</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>워크스페이스</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>config workspace</code>{'  '}— 워크스페이스 한계 조회</li>
+                  <li><code style={codeStyle}>/config workspace</code>{'  '}— 워크스페이스 한계 조회</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>기본값</div>
                 <ul style={accordionListStyleTertiary}>
