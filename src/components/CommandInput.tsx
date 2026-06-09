@@ -332,10 +332,12 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             {openSection === 'misc' && (
               <div style={accordionBodyStyle}>
                 <ul style={accordionListStyleTertiary}>
+                  <li>위 직접 명령은 모두 접두 <code style={codeStyle}>/</code> 필수 — 예: <code style={codeStyle}>/pick</code>, <code style={codeStyle}>/pyramid 1l</code></li>
+                  <li><code>/</code> 없는 일반 텍스트는 <strong>LLM 에이전트</strong>로 전송 (<code>/user_command</code> 토픽)</li>
+                  <li><code style={codeStyle}>/help</code> — 전체 슬래시 명령어 목록 (로그 피드에 출력)</li>
                   <li><code>-z</code> 와 <code>--cup</code> 동시 지정 시 <code>-z</code> 우선</li>
                   <li><code>--cup</code> 의 Z 계산은 <code>cup_stack.skills.config</code> (ROS 2) 가 담당</li>
                   <li>로봇이 online 일 때만 실행 (offline 이면 경고만 표시)</li>
-                  <li>접두 <code>/</code> 는 선택 — <code>/pick</code> 과 <code>pick</code> 동일</li>
                   <li><kbd>↑</kbd>/<kbd>↓</kbd> 로 명령 히스토리 탐색</li>
                 </ul>
                 <a
@@ -369,7 +371,7 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             onChange={e => { setValue(e.target.value); setHistIdx(-1); }}
             onKeyDown={handleKey}
             disabled={disabled}
-            placeholder="see ? Help"
+            placeholder="/help for commands · plain text → LLM agent"
             style={{
               flex: 1,
               background: 'var(--color-bg-surface-2)',

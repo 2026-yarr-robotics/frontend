@@ -90,6 +90,21 @@ export async function moveRobot(
   return post<MoveResponse>('/api/robot/move', { x, y, z, mode });
 }
 
+export interface UserCommandResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Forward a natural-language command to the LLM agent loop. The server
+ * publishes the text on the ROS topic `/user_command` (`std_msgs/String`),
+ * consumed by goal_state_publisher → llm_node. This is the path for plain
+ * text typed in the command box (no leading `/`).
+ */
+export async function sendUserCommand(text: string): Promise<UserCommandResponse> {
+  return post<UserCommandResponse>('/api/robot/command', { text });
+}
+
 export interface WorldCoord {
   x: number;
   y: number;

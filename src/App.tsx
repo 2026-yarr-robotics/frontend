@@ -14,11 +14,29 @@ import {
   startBringup, stopBringup, stopTask, pickOne,
   getPyramidConfig, setPyramidConfig, pyramidSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
   getFallenCupState, recoverFallenCup,
+  sendUserCommand, moveRobot,
   getBaseUrl, setBaseUrl,
   type EePosition, type PyramidSlot,
 } from './api';
 
 const PYRAMID_SLOT_KEYS: readonly PyramidSlot[] = ['1l', '1m', '1r', '2l', '2r', '3m'];
+
+// `/help` output — every direct (slash) command with a short description.
+// Plain text (no leading "/") is NOT a slash command: it is forwarded to the
+// LLM agent loop via the `/user_command` ROS topic.
+const SLASH_HELP: readonly string[] = [
+  'Slash commands (leading "/" required):',
+  '  /pick [N] | /pick -x X -y Y [-z Z | --cup N] | /pick X Y [Z] — 컵 집기 (base_link, m)',
+  '  /pyramid <slot> [x y] — 단일 컵 pick→place · slot: 1l 1m 1r 2l 2r 3m',
+  '  /scan [line|square] — 2방향 라인 / 4방향 사각형 스캔',
+  '  /move home — 로봇을 HOME(park) 위치로 이동 (0.45, 0, 0.45)',
+  '  /fallen state — 넘어진 컵 인식 상태 조회',
+  '  /fallen recovery [drop|place] [--single] [--dry] [--sim] — 넘어진 컵 세우기',
+  '  /config pyramid [center x y | degree d | pick_z z] — 피라미드 설정 조회/변경',
+  '  /config workspace — 워크스페이스 한계 조회',
+  '  /help — 이 명령어 목록',
+  'Plain text (no "/") → LLM 에이전트로 전송 (/user_command)',
+];
 
 function isPyramidSlot(s: string): s is PyramidSlot {
   return (PYRAMID_SLOT_KEYS as readonly string[]).includes(s);
@@ -196,19 +214,65 @@ export default function App() {
   const isRunning = taskStatus === 'planning' || taskStatus === 'executing';
 
   // ── Command handler ──
-  // Pick-one runs purely from the command box (no camera/pixel needed):
-  //   pick                     → current EE xy, --cup 1
-  //   pick N                   → current EE xy, --cup N
-  //   pick -x X -y Y -z Z      → cup top-centre Z (base_link, m)
-  //   pick -x X -y Y --cup N   → ROS 2 derives Z from N nested cups (default 1)
-  //   pick X Y Z               → positional, explicit Z
-  //   pick X Y                 → positional shorthand, --cup 1
-  // A leading "/" is accepted but stripped — chat-style `/pick` == `pick`.
+  // Routing by leading slash:
+  //   "/<cmd> …"  → direct robot command (slash commands below).
+  //   "<text>"    → forwarded to the LLM agent via the /user_command ROS topic.
+  //
+  // Direct (slash) commands — pick runs purely from the command box:
+  //   /pick                     → current EE xy, --cup 1
+  //   /pick N                   → current EE xy, --cup N
+  //   /pick -x X -y Y -z Z      → cup top-centre Z (base_link, m)
+  //   /pick -x X -y Y --cup N   → ROS 2 derives Z from N nested cups (default 1)
+  //   /pick X Y Z               → positional, explicit Z
+  //   /pick X Y                 → positional shorthand, --cup 1
+  //   /pyramid /scan /fallen /config …  (see SLASH_HELP / `/help`)
   const handleCommand = useCallback(async (cmd: string) => {
     addLog('INFO', `> ${cmd}`);
 
-    const norm = cmd.trim().replace(/^\/+/, '');
+    const raw = cmd.trim();
+
+    // Plain text (no leading "/") → LLM agent loop via /user_command.
+    if (!raw.startsWith('/')) {
+      addLog('INFO', `agent ← ${raw}`);
+      try {
+        const r = await sendUserCommand(raw);
+        addLog('OK', `agent: ${r.message}`);
+      } catch (e) {
+        addLog('ERR', `agent command failed: ${(e as Error).message}`);
+      }
+      return;
+    }
+
+    // Slash command — strip the leading "/" and dispatch a direct robot command.
+    const norm = raw.replace(/^\/+/, '');
     const tokens = norm.split(/\s+/);
+
+    // ── /help — list every slash command ─────────────────────────────
+    if (!norm || /^help\b/i.test(norm)) {
+      for (const line of SLASH_HELP) addLog('INFO', line);
+      return;
+    }
+
+    // ── move home — cartesian park pose (mirrors ManualControl HOME) ──
+    // /move home → 기존 ManualControl HOME 버튼과 동일한 park pose 로 이동한다.
+    // joint move_home 서비스가 아니라 /move(move_line) 사용 (서버에 /home 엔드포인트
+    // 없음 — ManualControl.tsx HOME_POSE 주석 참고).
+    if (/^move\b/i.test(norm)) {
+      const target = (tokens[1] || '').toLowerCase();
+      if (target !== 'home') {
+        addLog('WARN', 'usage: /move home');
+        return;
+      }
+      const HOME = { x: 0.45, y: 0.0, z: 0.45 };
+      addLog('INFO', `move → HOME (${HOME.x}, ${HOME.y}, ${HOME.z})`);
+      try {
+        const r = await moveRobot(HOME.x, HOME.y, HOME.z, 'absolute');
+        addLog('OK', `move home: ${r.message ?? 'done'}`);
+      } catch (e) {
+        addLog('ERR', `move home failed: ${(e as Error).message}`);
+      }
+      return;
+    }
 
     // ── config workspace ─────────────────────────────────────────────
     if (/^config\s+workspace\b/i.test(norm)) {
@@ -446,8 +510,8 @@ export default function App() {
 
     if (!/^pick\b/i.test(norm)) {
       addLog('WARN',
-        `Unknown command: "${cmd}" — try: pick, pyramid <slot> <x> <y>, scan [line|square], ` +
-        `fallen state|recovery, config pyramid [...], config workspace`,
+        `Unknown slash command: "${cmd}" — type /help for the list. ` +
+        `(Plain text without "/" is sent to the LLM agent.)`,
       );
       return;
     }
