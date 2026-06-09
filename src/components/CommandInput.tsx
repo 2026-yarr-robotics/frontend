@@ -362,6 +362,18 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
           </div>
         )}
 
+        {/* Quick commands — send a preset natural-language command to the LLM agent */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <button
+            className="ds-btn sm"
+            onClick={() => submit('3단 쌓아줘')}
+            disabled={disabled}
+            title="LLM 에이전트로 '3단 쌓아줘' 전송 → 3단 피라미드"
+          >
+            3단 쌓아줘
+          </button>
+        </div>
+
         {/* Input row */}
         <div style={{ display: 'flex', gap: 8 }}>
           <input
