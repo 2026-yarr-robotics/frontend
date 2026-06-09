@@ -59,6 +59,31 @@ interface TaskLog {
   log: string[];
 }
 
+interface AgentLogLine {
+  ts: number;
+  node: string;
+  level: string;
+  text: string;
+}
+
+interface AgentLog {
+  run_id: string | null;
+  lines: AgentLogLine[];
+}
+
+// rclpy log levels → LogFeed levels.
+function agentLevel(level: string): LogLevel {
+  const l = level.toUpperCase();
+  if (l === 'ERROR' || l === 'FATAL' || l === 'CRITICAL') return 'ERR';
+  if (l === 'WARN' || l === 'WARNING') return 'WARN';
+  return 'INFO';
+}
+
+// Drop the "_node" suffix so the tag stays compact (e.g. "plan_executor").
+function shortNode(node: string): string {
+  return node.replace(/_node$/, '');
+}
+
 function now(): string {
   return new Date().toTimeString().slice(0, 8);
 }
@@ -192,6 +217,33 @@ export default function App() {
   }, []);
 
   useJsonWebSocket<TaskLog>('/ws/task/log', handleTaskLog);
+
+  // ── WebSocket: agent (cup_stack_agent) LLM-loop logs ──
+  // Streamed from the host bringup-agent's cup_stack_agent/logs/<RUN_ID>/*.log
+  // via the server's /ws/agent/log proxy. Lines are tagged with their source
+  // node ("[agent:llm] …") so the operator can tell the agent's reasoning/
+  // actions apart from command-response logs.
+  const agentRunRef = useRef<string | null>(null);
+  const handleAgentLog = useCallback((data: AgentLog) => {
+    const incoming = data.lines ?? [];
+    const entries: LogEntry[] = [];
+    if (data.run_id && data.run_id !== agentRunRef.current) {
+      if (agentRunRef.current !== null) {
+        entries.push({ time: now(), level: 'INFO', msg: `── agent run ${data.run_id} ──` });
+      }
+      agentRunRef.current = data.run_id;
+    }
+    for (const line of incoming) {
+      entries.push({
+        time: now(),
+        level: agentLevel(line.level),
+        msg: `[agent:${shortNode(line.node)}] ${line.text}`,
+      });
+    }
+    if (entries.length) setLogs(prev => [...prev, ...entries].slice(-300));
+  }, []);
+
+  useJsonWebSocket<AgentLog>('/ws/agent/log', handleAgentLog);
 
   // ── Bringup toggle ──
   async function toggleBringup() {
