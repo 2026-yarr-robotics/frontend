@@ -164,7 +164,7 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 </div>
                 <div style={accordionSubHeaderStyle}>사용법</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>/pick</code>{'  '}— 현재 EE xy 위치에서 <code>--cup 1</code></li>
+                  <li><code style={codeStyle}>/pick</code>{'  '}— 현재 EE xy 위치에서 <code>--cup 1</code> (Z 미지정 시 <code>nested=1</code> 기본)</li>
                   <li><code style={codeStyle}>/pick N</code>{'  '}— 현재 EE xy 위치에서 nested 컵 N 개</li>
                   <li><code style={codeStyle}>/pick -x X -y Y -z Z</code>{'  '}— Z 를 명시 (컵 윗면 중앙)</li>
                   <li><code style={codeStyle}>/pick -x X -y Y --cup N</code>{'  '}— nested 컵 N 개 → Z 는 <strong>ROS 2 가 자동 계산</strong></li>

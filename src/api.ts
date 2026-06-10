@@ -129,26 +129,35 @@ export interface PickOptions {
   cupTopZ?: number;
   /** Number of nested cups in the source stack; ROS 2 derives the Z. */
   nestedCount?: number;
+  /**
+   * Cups remaining in the source nest (1 = bottom/last). Same semantics as
+   * `nestedCount` but defaults to 1; used when none of cupTopZ / nestedCount
+   * is supplied. Matches the pyramid/unstack `nested` param.
+   */
+  nested?: number;
   ori?: { x: number; y: number; z: number; w: number };
 }
 
 /**
- * Pick one cup at base_link (x, y). Caller must supply either `cupTopZ`
- * or `nestedCount` — the cup-stack geometry constants live in ROS 2
- * (`cup_stack.skills.config.SkillStackConfig`), not the frontend.
+ * Pick one cup at base_link (x, y). Supply `cupTopZ` (cup-top centre Z) or
+ * `nestedCount` (nested cups in the source stack); if neither is given the
+ * request defaults to `nested: 1`. The cup-stack geometry constants live in
+ * ROS 2 (`cup_stack.skills.config.SkillStackConfig`), not the frontend.
  */
 export async function pickOne(
   x: number,
   y: number,
   opts: PickOptions,
 ): Promise<PickSkillResponse> {
-  if (opts.cupTopZ === undefined && opts.nestedCount === undefined) {
-    throw new Error('pickOne: supply cupTopZ or nestedCount');
-  }
+  const hasZ = (opts as { z?: number }).z !== undefined;
+  const defaultsNested =
+    opts.cupTopZ === undefined && opts.nestedCount === undefined && !hasZ;
   return post<PickSkillResponse>('/api/robot/skill/pick', {
     x, y,
     ...(opts.cupTopZ !== undefined ? { cup_top_z: opts.cupTopZ } : {}),
     ...(opts.nestedCount !== undefined ? { nested_count: opts.nestedCount } : {}),
+    ...(opts.nested !== undefined ? { nested: opts.nested }
+      : defaultsNested ? { nested: 1 } : {}),
     ...(opts.ori ? { ori: opts.ori } : {}),
   });
 }
