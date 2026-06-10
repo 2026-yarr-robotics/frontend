@@ -12,7 +12,7 @@ import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
 import {
   startBringup, stopBringup, stopTask, pickOne,
-  getPyramidConfig, setPyramidConfig, pyramidSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
+  getPyramidConfig, setPyramidConfig, pyramidSkill, unstackSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
   getFallenCupState, recoverFallenCup,
   startFallenCupDetection, stopFallenCupDetection,
   sendUserCommand, moveRobot,
@@ -28,7 +28,8 @@ const PYRAMID_SLOT_KEYS: readonly PyramidSlot[] = ['1l', '1m', '1r', '2l', '2r',
 const SLASH_HELP: readonly string[] = [
   'Slash commands (leading "/" required):',
   '  /pick [N] | /pick -x X -y Y [-z Z | --cup N] | /pick X Y [Z] — 컵 집기 (base_link, m)',
-  '  /pyramid <slot> [x y] — 단일 컵 pick→place · slot: 1l 1m 1r 2l 2r 3m',
+  '  /pyramid <slot> [x y] [nested] — 단일 컵 pick→place · slot: 1l 1m 1r 2l 2r 3m · nested 기본 1',
+  '  /unstack <slot> <x y> [nested] — slot 컵을 (x,y)에 nested 컬럼으로 (역피라미드)',
   '  /scan [line|square] — 2방향 라인 / 4방향 사각형 스캔',
   '  /move home — 로봇을 HOME(park) 위치로 이동 (0.45, 0, 0.45)',
   '  /fallen state — 넘어진 컵 인식 상태 조회',
@@ -393,12 +394,13 @@ export default function App() {
       return;
     }
 
-    // ── pyramid <slot> [x y] ─────────────────────────────────────────
+    // ── pyramid <slot> [x y] [nested] ────────────────────────────────
     // x y 생략 시 현재 EE xy 를 pick 좌표로 사용 (pick 명령과 동일 동작).
+    // nested(source nest 잔여 컵 수, 기본 1)는 x y 를 명시한 경우에만 지정.
     if (/^pyramid\b/i.test(norm)) {
       const slot = tokens[1];
       if (!slot || !isPyramidSlot(slot)) {
-        addLog('WARN', 'usage: /pyramid <1l|1m|1r|2l|2r|3m> [x y]');
+        addLog('WARN', 'usage: /pyramid <1l|1m|1r|2l|2r|3m> [x y] [nested]');
         return;
       }
       let x: number;
@@ -407,7 +409,7 @@ export default function App() {
         x = Number(tokens[2]);
         y = Number(tokens[3]);
         if (!Number.isFinite(x) || !Number.isFinite(y)) {
-          addLog('WARN', 'usage: /pyramid <slot> [x y] — x, y must be numbers');
+          addLog('WARN', 'usage: /pyramid <slot> [x y] [nested] — x, y must be numbers');
           return;
         }
       } else {
@@ -418,18 +420,62 @@ export default function App() {
         x = eePosition.x;
         y = eePosition.y;
       }
+      const nested = tokens.length >= 5 ? Number(tokens[4]) : 1;
+      if (!Number.isInteger(nested) || nested < 1) {
+        addLog('WARN', 'usage: /pyramid <slot> [x y] [nested] — nested must be an integer ≥ 1');
+        return;
+      }
       if (!wsConnected || !robotOnline) {
         addLog('WARN', 'Robot must be online to run pyramid skill');
         return;
       }
-      addLog('INFO', `pyramid slot=${slot} pick=(${x.toFixed(3)}, ${y.toFixed(3)})…`);
+      addLog('INFO', `pyramid slot=${slot} pick=(${x.toFixed(3)}, ${y.toFixed(3)}) nested=${nested}…`);
       setTaskStatus('executing');
       try {
-        const r = await pyramidSkill(x, y, slot);
+        const r = await pyramidSkill(x, y, slot, nested);
         if (r.success) addLog('OK', `pyramid complete — ${r.detail}`);
         else addLog('ERR', `pyramid failed — ${r.detail}`);
       } catch (e) {
         addLog('ERR', `pyramid error: ${(e as Error).message}`);
+      } finally {
+        setTaskStatus('idle');
+      }
+      return;
+    }
+
+    // ── unstack <slot> <x y> [nested] ────────────────────────────────
+    // pyramid 의 역동작: slot 의 컵을 집어 목적지 (x,y) 에 nested 컬럼으로
+    // 쌓는다. 목적지 x,y 는 필수, nested(목적지 컬럼 높이)는 기본 1.
+    // 피라미드는 위에서부터 해체: 3m → 2r → 2l → 1r → 1m → 1l.
+    if (/^unstack\b/i.test(norm)) {
+      const slot = tokens[1];
+      if (!slot || !isPyramidSlot(slot)) {
+        addLog('WARN', 'usage: /unstack <1l|1m|1r|2l|2r|3m> <x y> [nested]');
+        return;
+      }
+      const x = Number(tokens[2]);
+      const y = Number(tokens[3]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        addLog('WARN', 'usage: /unstack <slot> <x y> [nested] — x, y must be numbers');
+        return;
+      }
+      const nested = tokens.length >= 5 ? Number(tokens[4]) : 1;
+      if (!Number.isInteger(nested) || nested < 1) {
+        addLog('WARN', 'usage: /unstack <slot> <x y> [nested] — nested must be an integer ≥ 1');
+        return;
+      }
+      if (!wsConnected || !robotOnline) {
+        addLog('WARN', 'Robot must be online to run unstack skill');
+        return;
+      }
+      addLog('INFO', `unstack slot=${slot} → (${x.toFixed(3)}, ${y.toFixed(3)}) nested=${nested}…`);
+      setTaskStatus('executing');
+      try {
+        const r = await unstackSkill(slot, x, y, nested);
+        if (r.success) addLog('OK', `unstack complete — ${r.detail}`);
+        else addLog('ERR', `unstack failed — ${r.detail}`);
+      } catch (e) {
+        addLog('ERR', `unstack error: ${(e as Error).message}`);
       } finally {
         setTaskStatus('idle');
       }

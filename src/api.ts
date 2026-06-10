@@ -187,10 +187,35 @@ export async function setPyramidConfig(update: PyramidConfigUpdate): Promise<Pyr
   return post<PyramidConfig>('/api/robot/config/pyramid', update);
 }
 
+/**
+ * Build: pick a cup from the source nest at (x, y) and place it into pyramid
+ * `slot`. `nested` = cups remaining in the source nest (1 = bottom/last); the
+ * pick Z rises with it. Defaults to 1 → identical to the pre-nested behaviour.
+ */
 export async function pyramidSkill(
-  x: number, y: number, slot: PyramidSlot,
+  x: number, y: number, slot: PyramidSlot, nested = 1,
 ): Promise<PyramidSkillResponse> {
-  return post<PyramidSkillResponse>('/api/robot/skill/pyramid', { x, y, slot });
+  return post<PyramidSkillResponse>('/api/robot/skill/pyramid', { x, y, slot, nested });
+}
+
+// ── Unstack skill ─────────────────────────────────────────────────────────
+
+export interface UnstackSkillResponse {
+  success: boolean;
+  skill: string;
+  detail: string;
+}
+
+/**
+ * Inverse of pyramidSkill: pick the cup in a pyramid `slot` (pick XY/Z come
+ * from the server's /config/pyramid cache) and nest it at destination (x, y).
+ * `nested` is the destination column height after this cup (1 = first/bottom);
+ * release Z grows with it. Unstack top-down: 3m → 2r → 2l → 1r → 1m → 1l.
+ */
+export async function unstackSkill(
+  slot: PyramidSlot, x: number, y: number, nested: number,
+): Promise<UnstackSkillResponse> {
+  return post<UnstackSkillResponse>('/api/robot/skill/unstack', { slot, x, y, nested });
 }
 
 // ── Scan skill ────────────────────────────────────────────────────────────

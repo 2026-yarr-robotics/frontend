@@ -67,7 +67,7 @@ function AccordionHeader({
   );
 }
 
-type HelpSection = 'pick' | 'pyramid' | 'scan' | 'fallen' | 'config' | 'misc';
+type HelpSection = 'pick' | 'pyramid' | 'unstack' | 'scan' | 'fallen' | 'config' | 'misc';
 
 export default function CommandInput({ onSend, disabled = false }: CommandInputProps) {
   const [value, setValue] = useState('');
@@ -202,8 +202,8 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                     {'  '}— 현재 EE xy 위치에서 pick → slot 으로 place
                   </li>
                   <li>
-                    <code style={codeStyle}>/pyramid &lt;slot&gt; X Y</code>
-                    {'  '}— 명시 pick 좌표
+                    <code style={codeStyle}>/pyramid &lt;slot&gt; X Y [nested]</code>
+                    {'  '}— 명시 pick 좌표 (nested=source 잔여 컵 수, 기본 1)
                   </li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>예시</div>
@@ -211,12 +211,52 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                   <li><code style={codeStyle}>/pyramid 1l</code> — 현재 EE 에서 → 1l 슬롯</li>
                   <li><code style={codeStyle}>/pyramid 2r</code> — 현재 EE 에서 → 2r 슬롯</li>
                   <li><code style={codeStyle}>/pyramid 3m 0.40 0.10</code> — (0.40, 0.10) 에서 → 3m</li>
+                  <li><code style={codeStyle}>/pyramid 3m 0.40 0.10 6</code> — 6컵 nest 의 맨 위부터 → 3m</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>슬롯</div>
                 <ul style={accordionListStyleTertiary}>
                   <li><code>1l 1m 1r</code> — bottom tier (3개)</li>
                   <li><code>2l 2r</code> — middle tier (2개)</li>
                   <li><code>3m</code> — top tier (1개)</li>
+                </ul>
+              </div>
+            )}
+
+            {/* ── Unstack ─────────────────────────────────────────── */}
+            <AccordionHeader
+              label="Unstack"
+              hint="피라미드 역순 해체 → nested 스택"
+              open={openSection === 'unstack'}
+              onClick={() => toggleSection('unstack')}
+            />
+            {openSection === 'unstack' && (
+              <div style={accordionBodyStyle}>
+                <div style={{ color: 'var(--color-text-tertiary)' }}>
+                  pyramid 의 역동작. slot 의 컵을 pick → 목적지 (x, y) 에 nested 컬럼으로
+                  place. pick 좌표·pick_z 는 서버 저장값. 위에서부터 해체
+                  (<code>3m→2r→2l→1r→1m→1l</code>) 하며 매 컵 <code>nested</code> 를
+                  1→6 으로 올리면 한 스택으로 모인다.
+                </div>
+                <div style={accordionSubHeaderStyle}>사용법</div>
+                <ul style={accordionListStyle}>
+                  <li>
+                    <code style={codeStyle}>/unstack &lt;slot&gt; X Y</code>
+                    {'  '}— slot 컵을 (X, Y) 에 place (nested=1)
+                  </li>
+                  <li>
+                    <code style={codeStyle}>/unstack &lt;slot&gt; X Y nested</code>
+                    {'  '}— nested = 목적지 컬럼 높이 (1=맨 아래)
+                  </li>
+                </ul>
+                <div style={accordionSubHeaderStyle}>예시</div>
+                <ul style={accordionListStyleTertiary}>
+                  <li><code style={codeStyle}>/unstack 3m 0.40 0.10</code> — top 컵 → (0.40,0.10) 바닥</li>
+                  <li><code style={codeStyle}>/unstack 2r 0.40 0.10 2</code> — 두 번째 컵 nesting</li>
+                </ul>
+                <div style={accordionSubHeaderStyle}>참고</div>
+                <ul style={accordionListStyleTertiary}>
+                  <li>전체 6컵 해체는 <code>script/unstack.sh</code> 로 자동화</li>
+                  <li><code>place_z = pick_z + (nested-1) × nest_inc</code></li>
                 </ul>
               </div>
             )}
