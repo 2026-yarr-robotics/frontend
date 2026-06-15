@@ -227,6 +227,41 @@ export async function unstackSkill(
   return post<UnstackSkillResponse>('/api/robot/skill/unstack', { slot, x, y, nested });
 }
 
+// ── Unstack-all (full teardown) skill ───────────────────────────────────────
+
+export interface UnstackAllStep {
+  slot: PyramidSlot;
+  nested: number;
+  success: boolean;
+  attempts: number;
+  detail: string;
+}
+
+export interface UnstackAllSkillResponse {
+  success: boolean;
+  skill: string;
+  dest: { x: number; y: number };
+  total: number;
+  /** Cups successfully torn down and nested (0–6). */
+  completed: number;
+  detail: string;
+  steps: UnstackAllStep[];
+}
+
+/**
+ * Full pyramid teardown — server-side port of `script/unstack.sh`. Walks
+ * 3m → 2r → 2l → 1r → 1m → 1l, raising the destination column height from 1 to
+ * 6 so all six cups nest at (x, y). The server retries transient per-step
+ * failures; a step that fails after all retries stops the sequence and returns
+ * `success: false` with `completed` set (no exception). This is a single
+ * long-running request (~minutes); the response carries per-step results.
+ */
+export async function unstackAllSkill(
+  x = 0.4, y = 0.1,
+): Promise<UnstackAllSkillResponse> {
+  return post<UnstackAllSkillResponse>('/api/robot/skill/unstack_all', { x, y });
+}
+
 // ── Scan skill ────────────────────────────────────────────────────────────
 
 export interface ScanSkillResponse {
@@ -304,6 +339,28 @@ export async function recoverFallenCup(
   return post<TaskStartedResponse>('/api/robot/fallen-cup/recovery', {
     mode: opts.mode ?? 'drop',
     multi_cup: opts.multiCup ?? false,
+    dry_run: opts.dryRun ?? false,
+    sim: opts.sim ?? false,
+  });
+}
+
+export interface OutlierRecoveryOptions {
+  /** fallen lift 후 동작: drop(그 자리) / place(옮겨 세우기) · mouth-up 단계와 무관 */
+  mode?: 'drop' | 'place';
+  dryRun?: boolean;
+  sim?: boolean;
+}
+
+// outlier 컵 복구 오케스트레이터 태스크 시작 (1회 실행 후 종료):
+// fallen cup 을 전부 세운 뒤 mouth-up cup 을 전부 뒤집는 상위 집합 스킬.
+// multi-cup 은 오케스트레이터가 강제 ON 이라 노출하지 않는다.
+// 진행 상황은 /ws/task/log · /ws/robot/state 로 모니터링.
+// 중지는 stopTask('outlier_cup_recovery').
+export async function recoverOutlierCup(
+  opts: OutlierRecoveryOptions = {},
+): Promise<TaskStartedResponse> {
+  return post<TaskStartedResponse>('/api/robot/outlier-cup/recovery', {
+    mode: opts.mode ?? 'drop',
     dry_run: opts.dryRun ?? false,
     sim: opts.sim ?? false,
   });
