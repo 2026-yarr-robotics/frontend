@@ -412,9 +412,16 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
         <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <button
             className="ds-btn sm"
-            onClick={() => submit('3단 쌓아줘')}
+            onClick={() => {
+              // Autofill only — do NOT execute. Drop the command into the input
+              // box and focus it; the skill starts only when the user presses
+              // Enter / Send, so it can be reviewed/edited first.
+              setValue('3단 쌓아줘');
+              setHistIdx(-1);
+              inputRef.current?.focus();
+            }}
             disabled={disabled}
-            title="LLM 에이전트로 '3단 쌓아줘' 전송 → 3단 피라미드"
+            title="입력창에 '3단 쌓아줘' 자동완성 (Send 를 눌러야 실행) → LLM 에이전트 → 3단 피라미드"
           >
             3단 쌓아줘
           </button>
