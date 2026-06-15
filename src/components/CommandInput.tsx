@@ -421,15 +421,15 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
           <button
             className="ds-btn sm"
             onClick={() => {
-              if (window.confirm(
-                '피라미드 6컵을 전체 해체합니다 (3m→2r→2l→1r→1m→1l → nest 0.40, 0.10).\n' +
-                '수 분 소요됩니다. 진행할까요?',
-              )) {
-                submit('/unstack --all');
-              }
+              // Autofill only — do NOT execute. Drop the command into the input
+              // box and focus it; the skill starts only when the user presses
+              // Enter / Send, so the destination can be reviewed/edited first.
+              setValue('/unstack --all');
+              setHistIdx(-1);
+              inputRef.current?.focus();
             }}
             disabled={disabled}
-            title="피라미드 6컵 전체 해체 파이프라인 (/unstack --all) → 목적지 (0.40, 0.10) 한 스택"
+            title="입력창에 /unstack --all 자동완성 (Send 를 눌러야 실행) → 6컵 전체 해체 → (0.40, 0.10)"
           >
             /unstack --all
           </button>
