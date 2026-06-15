@@ -49,6 +49,22 @@ export async function stopTask(name: string) {
   return post('/api/robot/task/stop', { name });
 }
 
+export interface StopAllResult {
+  success: boolean;
+  ros_stop: boolean;
+  interrupted: boolean;
+  killed_tasks: string[];
+  homed: boolean;
+  detail: string;
+}
+
+// 통합 정지(패닉/abort): 무엇이 돌고 있든 즉시 멈추고 HOME 복귀.
+// 동기 skill(pyramid/unstack)·action task 모두 한 호출로 멈춘다 — 대상
+// 이름이 필요 없다(`task/stop` 과 다른 점). HOME 이동까지 ~수십초 걸릴 수 있다.
+export async function stopAll(home = true) {
+  return post<StopAllResult>('/api/robot/stop', { home });
+}
+
 export interface WorkspaceLimits {
   x_min: number;
   x_max: number;

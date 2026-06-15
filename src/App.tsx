@@ -11,7 +11,7 @@ import type { LogEntry, LogLevel } from './components/LogFeed';
 import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
 import {
-  startBringup, stopBringup, stopTask, pickOne,
+  startBringup, stopBringup, stopAll, pickOne,
   getPyramidConfig, setPyramidConfig, pyramidSkill, unstackSkill, unstackAllSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
   getFallenCupState, recoverFallenCup, recoverOutlierCup,
   startFallenCupDetection, stopFallenCupDetection,
@@ -136,7 +136,6 @@ export default function App() {
   const [joints, setJoints] = useState<number[]>(DEFAULT_JOINTS);
   const [gripperMm, setGripperMm] = useState<number | null>(null);
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('idle');
-  const [taskName, setTaskName] = useState<string | null>(null);
   // Timestamp of last user abort. While the server reconciles, ignore
   // stale `running` from WS to prevent the executing↔idle bounce.
   const abortGuardRef = useRef<number>(0);
@@ -176,8 +175,6 @@ export default function App() {
     setRobotOnline(hasJoints && !!data.ee_position);
     setEePosition(data.ee_position ?? null);
     setGripperMm(data.gripper?.width_mm ?? null);
-
-    setTaskName(data.task?.name ?? null);
 
     const taskSt = data.task?.status;
     // Abort guard: within 2s of a user abort, ignore stale `running`
@@ -759,15 +756,13 @@ export default function App() {
     // `executing` before the server has processed the stop.
     abortGuardRef.current = Date.now();
     setTaskStatus('idle');
-    const name = taskName;
-    if (!name) {
-      addLog('WARN', 'Abort: no active task name known to the server');
-      return;
-    }
-    addLog('WARN', `Aborting task: ${name}…`);
+    // Unified stop: works for synchronous skills (pyramid/unstack — which have
+    // no task name) and action tasks alike. Interrupts the in-flight motion
+    // and returns the arm to HOME, so no `taskName` lookup is required.
+    addLog('WARN', 'Aborting: stopping motion + returning HOME…');
     try {
-      await stopTask(name);
-      addLog('OK', `Aborted: ${name}`);
+      const r = await stopAll();
+      addLog('OK', `Aborted: ${r.detail}`);
     } catch (e) {
       addLog('ERR', `Abort failed: ${(e as Error).message}`);
     }
