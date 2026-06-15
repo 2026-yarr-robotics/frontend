@@ -12,8 +12,8 @@ import type { TaskStatus } from './components/RobotStatus';
 import { useJsonWebSocket } from './hooks/useWebSocket';
 import {
   startBringup, stopBringup, stopTask, pickOne,
-  getPyramidConfig, setPyramidConfig, pyramidSkill, unstackSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
-  getFallenCupState, recoverFallenCup,
+  getPyramidConfig, setPyramidConfig, pyramidSkill, unstackSkill, unstackAllSkill, scanSkill, scanSquareSkill, getWorkspaceLimits,
+  getFallenCupState, recoverFallenCup, recoverOutlierCup,
   startFallenCupDetection, stopFallenCupDetection,
   sendUserCommand, moveRobot,
   getBaseUrl, setBaseUrl,
@@ -30,11 +30,13 @@ const SLASH_HELP: readonly string[] = [
   '  /pick [N] | /pick -x X -y Y [-z Z | --cup N] | /pick X Y [Z] — 컵 집기 (base_link, m)',
   '  /pyramid <slot> [x y] [nested] — 단일 컵 pick→place · slot: 1l 1m 1r 2l 2r 3m · nested 기본 1',
   '  /unstack <slot> <x y> [nested] — slot 컵을 (x,y)에 nested 컬럼으로 (역피라미드)',
+  '  /unstack --all [x y] — 피라미드 6컵 전체 해체 → (x,y) 한 스택 (기본 0.40 0.10)',
   '  /scan [line|square] — 2방향 라인 / 4방향 사각형 스캔',
   '  /move home — 로봇을 HOME(park) 위치로 이동 (0.244, -0.012, 0.515)',
   '  /fallen state — 넘어진 컵 인식 상태 조회',
   '  /fallen detect [start|stop] — 넘어진 컵 YOLO 인식 서비스 on/off',
   '  /fallen recovery [drop|place] [--single] [--dry] [--sim] — 넘어진 컵 세우기',
+  '  /outlier recovery [drop|place] [--dry] [--sim] — 넘어진 컵+입구위 컵 한 번에 복구 (오케스트레이터)',
   '  /config pyramid [center x y | degree d | pick_z z] — 피라미드 설정 조회/변경',
   '  /config workspace — 워크스페이스 한계 조회',
   '  /help — 이 명령어 목록',
@@ -443,6 +445,48 @@ export default function App() {
       return;
     }
 
+    // ── unstack --all [x y] ──────────────────────────────────────────
+    // 전체 해체 파이프라인 (script/unstack.sh 의 서버 스킬). 6컵을 위에서부터
+    // 3m → 2r → 2l → 1r → 1m → 1l 순으로 모두 집어 (x,y) 한 스택으로 모은다.
+    // x,y 생략 시 기본 (0.40, 0.10). 단일 unstack 분기보다 먼저 처리.
+    if (/^unstack\s+(--all|all)\b/i.test(norm)) {
+      const rest = tokens.slice(2);   // tokens: ['unstack', '--all', x?, y?]
+      let x = 0.4;
+      let y = 0.1;
+      if (rest.length >= 2) {
+        x = Number(rest[0]);
+        y = Number(rest[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          addLog('WARN', 'usage: /unstack --all [x y] — x, y must be numbers');
+          return;
+        }
+      } else if (rest.length === 1) {
+        addLog('WARN', 'usage: /unstack --all [x y] — x 와 y 를 함께 지정하세요');
+        return;
+      }
+      if (!wsConnected || !robotOnline) {
+        addLog('WARN', 'Robot must be online to run unstack --all');
+        return;
+      }
+      addLog('INFO', `unstack --all → (${x.toFixed(3)}, ${y.toFixed(3)}) · 6컵 해체 시작 (~수 분)…`);
+      setTaskStatus('executing');
+      try {
+        const r = await unstackAllSkill(x, y);
+        for (const s of r.steps) {
+          const tag = s.success ? 'OK' : 'ERR';
+          const retry = s.attempts > 1 ? ` (${s.attempts} attempts)` : '';
+          addLog(tag, `  [${s.nested}/${r.total}] slot=${s.slot}${retry} — ${s.detail}`);
+        }
+        if (r.success) addLog('OK', `unstack --all complete — ${r.detail}`);
+        else addLog('ERR', `unstack --all stopped — ${r.completed}/${r.total} done · ${r.detail}`);
+      } catch (e) {
+        addLog('ERR', `unstack --all error: ${(e as Error).message}`);
+      } finally {
+        setTaskStatus('idle');
+      }
+      return;
+    }
+
     // ── unstack <slot> <x y> [nested] ────────────────────────────────
     // pyramid 의 역동작: slot 의 컵을 집어 목적지 (x,y) 에 nested 컬럼으로
     // 쌓는다. 목적지 x,y 는 필수, nested(목적지 컬럼 높이)는 기본 1.
@@ -596,6 +640,42 @@ export default function App() {
         'usage: /fallen state  ·  /fallen detect [start|stop]  ·  ' +
         '/fallen recovery [drop|place] [--single] [--dry] [--sim]',
       );
+      return;
+    }
+
+    // ── outlier recovery [drop|place] [--dry] [--sim] ────────────────
+    // 오케스트레이터(상위 집합): fallen cup 을 전부 세운 뒤 mouth-up cup 을
+    // 전부 뒤집어 내려놓고 HOME 복귀 후 종료. multi-cup 은 강제 ON 이라
+    // --single 옵션 없음. fallen-only 는 /fallen recovery 를 쓴다.
+    if (/^outlier\b/i.test(norm)) {
+      const sub = (tokens[1] ?? 'recovery').toLowerCase();
+      if (sub !== 'recovery' && sub !== 'recover') {
+        addLog('WARN', 'usage: /outlier recovery [drop|place] [--dry] [--sim]');
+        return;
+      }
+      const mode = tokens[2] && /^(drop|place)$/i.test(tokens[2])
+        ? tokens[2].toLowerCase() as 'drop' | 'place'
+        : 'drop';
+      const dryRun = /--dry\b/i.test(norm);
+      const sim = /--sim\b/i.test(norm);
+      if (!sim && (!wsConnected || !robotOnline)) {
+        addLog('WARN', 'Robot must be online to run outlier-cup recovery');
+        return;
+      }
+      addLog('INFO',
+        `outlier recovery mode=${mode}` +
+        `${dryRun ? ' --dry' : ''}${sim ? ' --sim' : ''} (fallen→mouth-up)…`,
+      );
+      setTaskStatus('executing');
+      try {
+        const r = await recoverOutlierCup({ mode, dryRun, sim });
+        addLog('OK', `outlier recovery started (${r.name}: ${r.status}) — 진행 상황은 로그 피드 참조`);
+        // 1회 실행 launch 태스크: 상태/로그는 /ws/robot/state · /ws/task/log 가
+        // 소유한다 (fallen recovery 와 동일). 여기서 idle 로 되돌리지 않음.
+      } catch (e) {
+        addLog('ERR', `outlier recovery: ${(e as Error).message}`);
+        setTaskStatus('idle');
+      }
       return;
     }
 

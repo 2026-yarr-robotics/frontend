@@ -67,7 +67,7 @@ function AccordionHeader({
   );
 }
 
-type HelpSection = 'pick' | 'pyramid' | 'unstack' | 'scan' | 'fallen' | 'config' | 'misc';
+type HelpSection = 'pick' | 'pyramid' | 'unstack' | 'scan' | 'outlier' | 'config' | 'misc';
 
 export default function CommandInput({ onSend, disabled = false }: CommandInputProps) {
   const [value, setValue] = useState('');
@@ -247,15 +247,23 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                     <code style={codeStyle}>/unstack &lt;slot&gt; X Y nested</code>
                     {'  '}— nested = 목적지 컬럼 높이 (1=맨 아래)
                   </li>
+                  <li>
+                    <code style={codeStyle}>/unstack --all [X Y]</code>
+                    {'  '}— <strong>전체 6컵 해체 파이프라인</strong> (위 버튼). 3m→2r→2l→1r→1m→1l
+                    순으로 모두 집어 (X, Y) 한 스택으로 (기본 <code>0.40 0.10</code>)
+                  </li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>예시</div>
                 <ul style={accordionListStyleTertiary}>
                   <li><code style={codeStyle}>/unstack 3m 0.40 0.10</code> — top 컵 → (0.40,0.10) 바닥</li>
                   <li><code style={codeStyle}>/unstack 2r 0.40 0.10 2</code> — 두 번째 컵 nesting</li>
+                  <li><code style={codeStyle}>/unstack --all</code> — 6컵 전체 해체 → (0.40, 0.10)</li>
+                  <li><code style={codeStyle}>/unstack --all 0.45 -0.10</code> — 목적지 지정 전체 해체</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>참고</div>
                 <ul style={accordionListStyleTertiary}>
-                  <li>전체 6컵 해체는 <code>script/unstack.sh</code> 로 자동화</li>
+                  <li><code>/unstack --all</code> = 서버 스킬 <code>/api/robot/skill/unstack_all</code> (script/unstack.sh 의 스킬화) · 단계별 재시도 내장 · ~수 분 소요</li>
+                  <li>단계 실패 시 시퀀스 중단, <code>완료 N/6</code> + 단계별 결과를 로그에 보고</li>
                   <li><code>place_z = pick_z + (nested-1) × nest_inc</code></li>
                 </ul>
               </div>
@@ -299,20 +307,21 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
               </div>
             )}
 
-            {/* ── Fallen Cup ──────────────────────────────────────── */}
+            {/* ── Outlier Cup (fallen + mouth-up recovery) ────────── */}
             <AccordionHeader
-              label="Fallen Cup"
-              hint="넘어진 컵 인식 · 세우기"
-              open={openSection === 'fallen'}
-              onClick={() => toggleSection('fallen')}
+              label="Outlier Cup"
+              hint="비정상 자세 컵 인식 · 복구"
+              open={openSection === 'outlier'}
+              onClick={() => toggleSection('outlier')}
             />
-            {openSection === 'fallen' && (
+            {openSection === 'outlier' && (
               <div style={accordionBodyStyle}>
                 <div style={{ color: 'var(--color-text-tertiary)' }}>
-                  YOLO-seg 가 카메라로 넘어진 컵을 인식하고(상시 서비스, 서버에서
-                  자동 기동), 로봇이 잡아 세운다. 인식 상태를 확인하고 → 세우기 실행.
+                  YOLO-seg 가 카메라로 비정상 자세(outlier) 컵을 인식하고(상시 서비스,
+                  서버에서 자동 기동), 로봇이 잡아 복구한다. 넘어진 컵(fallen)만 세우거나,
+                  넘어진 컵 + 입구위 컵(mouth-up)을 한 번에 복구할 수 있다.
                 </div>
-                <div style={accordionSubHeaderStyle}>상태 (state)</div>
+                <div style={accordionSubHeaderStyle}>인식 (state / detect)</div>
                 <ul style={accordionListStyle}>
                   <li><code style={codeStyle}>/fallen state</code>{'  '}— 인식 상태 + 감지된 컵 목록</li>
                   <li><code style={codeStyle}>/fallen detect start</code>{'  '}— YOLO 인식 서비스 시작 (fallen_cup_detect)</li>
@@ -320,15 +329,18 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
                 </ul>
                 <div style={accordionSubHeaderStyle}>세우기 (recovery)</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>/fallen recovery drop</code>{'  '}— drop 모드 (그 자리에 세우기) · 여러 컵 순차 (기본)</li>
-                  <li><code style={codeStyle}>/fallen recovery place</code>{'  '}— 작업공간으로 옮겨 세우기 · 여러 컵 순차 (기본)</li>
-                  <li><code style={codeStyle}>/fallen recovery place --single</code>{'  '}— 단일 컵만 처리</li>
-                  <li><code style={codeStyle}>/fallen recovery drop --dry</code>{'  '}— approach 까지만 (그리퍼 동작 X)</li>
+                  <li><code style={codeStyle}>/fallen recovery drop</code>{'  '}— 넘어진 컵만 · 그 자리에 세우기 · 여러 컵 순차 (기본)</li>
+                  <li><code style={codeStyle}>/fallen recovery place</code>{'  '}— 넘어진 컵만 · 작업공간으로 옮겨 세우기</li>
+                  <li><code style={codeStyle}>/fallen recovery place --single</code>{'  '}— 단일 컵만 처리 · <code>--dry</code> approach 까지만</li>
+                  <li><code style={codeStyle}>/outlier recovery drop</code>{'  '}— 넘어진 컵 → 입구위 컵 한 번에 복구 (오케스트레이터)</li>
+                  <li><code style={codeStyle}>/outlier recovery place</code>{'  '}— fallen 옮겨 세우기 + mouth-up 뒤집기</li>
+                  <li><code style={codeStyle}>/outlier recovery drop --dry</code>{'  '}— approach 까지만 · <code>--sim</code> 으로 HW 우회</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>참고</div>
                 <ul style={accordionListStyleTertiary}>
+                  <li><code>/outlier</code> 의 <code>mode</code> 는 fallen 단계에만 적용 (mouth-up 단계와 무관) · multi-cup 항상 ON (<code>--single</code> 없음)</li>
                   <li>1회 실행 태스크 — 완료 후 자동 종료, 진행 로그는 로그 피드에 표시</li>
-                  <li>중지는 상단 <strong>Abort</strong> 버튼 (task: <code>fallen_cup_recovery</code>)</li>
+                  <li>중지는 상단 <strong>Abort</strong> 버튼 (task: <code>fallen_cup_recovery</code> / <code>outlier_cup_recovery</code>)</li>
                   <li>실행 시 <code>skill_api</code> 가 자동 정지됨 (MoveItPy 컨트롤러 경합 방지) — 다음 pick 에서 자동 재시작</li>
                 </ul>
               </div>
@@ -404,7 +416,7 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
           </div>
         )}
 
-        {/* Quick commands — send a preset natural-language command to the LLM agent */}
+        {/* Quick commands — preset agent command + direct full-teardown pipeline */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
           <button
             className="ds-btn sm"
@@ -413,6 +425,21 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             title="LLM 에이전트로 '3단 쌓아줘' 전송 → 3단 피라미드"
           >
             3단 쌓아줘
+          </button>
+          <button
+            className="ds-btn sm"
+            onClick={() => {
+              if (window.confirm(
+                '피라미드 6컵을 전체 해체합니다 (3m→2r→2l→1r→1m→1l → nest 0.40, 0.10).\n' +
+                '수 분 소요됩니다. 진행할까요?',
+              )) {
+                submit('/unstack --all');
+              }
+            }}
+            disabled={disabled}
+            title="피라미드 6컵 전체 해체 파이프라인 (/unstack --all) → 목적지 (0.40, 0.10) 한 스택"
+          >
+            /unstack --all
           </button>
         </div>
 
