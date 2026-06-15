@@ -149,6 +149,9 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             fontFamily: 'var(--font-mono)', fontSize: 11, lineHeight: 1.5,
             color: 'var(--color-text-secondary)',
             display: 'flex', flexDirection: 'column',
+            // Cap the panel so a long open section never pushes the input row
+            // off-screen — scroll inside the panel instead.
+            maxHeight: '40vh', overflowY: 'auto',
           }}>
             {/* ── Pick ─────────────────────────────────────────────── */}
             <AccordionHeader
@@ -317,31 +320,20 @@ export default function CommandInput({ onSend, disabled = false }: CommandInputP
             {openSection === 'outlier' && (
               <div style={accordionBodyStyle}>
                 <div style={{ color: 'var(--color-text-tertiary)' }}>
-                  YOLO-seg 가 카메라로 비정상 자세(outlier) 컵을 인식하고(상시 서비스,
-                  서버에서 자동 기동), 로봇이 잡아 복구한다. 넘어진 컵(fallen)만 세우거나,
-                  넘어진 컵 + 입구위 컵(mouth-up)을 한 번에 복구할 수 있다.
+                  YOLO-seg 가 비정상 자세 컵을 인식(상시 서비스), 로봇이 잡아 복구. 넘어진 컵만
+                  (<code style={codeStyle}>/fallen</code>) 또는 넘어진 컵 + 입구위 컵 한 번에
+                  (<code style={codeStyle}>/outlier</code>, 오케스트레이터).
                 </div>
-                <div style={accordionSubHeaderStyle}>인식 (state / detect)</div>
+                <div style={accordionSubHeaderStyle}>인식 / 복구</div>
                 <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>/fallen state</code>{'  '}— 인식 상태 + 감지된 컵 목록</li>
-                  <li><code style={codeStyle}>/fallen detect start</code>{'  '}— YOLO 인식 서비스 시작 (fallen_cup_detect)</li>
-                  <li><code style={codeStyle}>/fallen detect stop</code>{'  '}— YOLO 인식 서비스 중지</li>
-                </ul>
-                <div style={accordionSubHeaderStyle}>세우기 (recovery)</div>
-                <ul style={accordionListStyle}>
-                  <li><code style={codeStyle}>/fallen recovery drop</code>{'  '}— 넘어진 컵만 · 그 자리에 세우기 · 여러 컵 순차 (기본)</li>
-                  <li><code style={codeStyle}>/fallen recovery place</code>{'  '}— 넘어진 컵만 · 작업공간으로 옮겨 세우기</li>
-                  <li><code style={codeStyle}>/fallen recovery place --single</code>{'  '}— 단일 컵만 처리 · <code>--dry</code> approach 까지만</li>
-                  <li><code style={codeStyle}>/outlier recovery drop</code>{'  '}— 넘어진 컵 → 입구위 컵 한 번에 복구 (오케스트레이터)</li>
-                  <li><code style={codeStyle}>/outlier recovery place</code>{'  '}— fallen 옮겨 세우기 + mouth-up 뒤집기</li>
-                  <li><code style={codeStyle}>/outlier recovery drop --dry</code>{'  '}— approach 까지만 · <code>--sim</code> 으로 HW 우회</li>
+                  <li><code style={codeStyle}>/fallen state</code> · <code style={codeStyle}>/fallen detect [start|stop]</code>{'  '}— 인식 상태 · YOLO on/off</li>
+                  <li><code style={codeStyle}>/fallen recovery [drop|place] [--single] [--dry]</code>{'  '}— 넘어진 컵만</li>
+                  <li><code style={codeStyle}>/outlier recovery [drop|place] [--dry] [--sim]</code>{'  '}— 넘어진 컵 → 입구위 컵 한 번에</li>
                 </ul>
                 <div style={accordionSubHeaderStyle}>참고</div>
                 <ul style={accordionListStyleTertiary}>
-                  <li><code>/outlier</code> 의 <code>mode</code> 는 fallen 단계에만 적용 (mouth-up 단계와 무관) · multi-cup 항상 ON (<code>--single</code> 없음)</li>
-                  <li>1회 실행 태스크 — 완료 후 자동 종료, 진행 로그는 로그 피드에 표시</li>
-                  <li>중지는 상단 <strong>Abort</strong> 버튼 (task: <code>fallen_cup_recovery</code> / <code>outlier_cup_recovery</code>)</li>
-                  <li>실행 시 <code>skill_api</code> 가 자동 정지됨 (MoveItPy 컨트롤러 경합 방지) — 다음 pick 에서 자동 재시작</li>
+                  <li><code>drop</code>=그 자리 · <code>place</code>=옮겨 세우기 · <code>--dry</code> approach만 · <code>--sim</code> HW 우회 · <code>/outlier</code> 는 multi-cup 항상 ON</li>
+                  <li>1회 실행 — 중지는 <strong>Abort</strong> 버튼 · 실행 시 <code>skill_api</code> 자동 정지 후 다음 pick 에서 재시작</li>
                 </ul>
               </div>
             )}
