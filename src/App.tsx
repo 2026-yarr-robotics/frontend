@@ -31,7 +31,7 @@ const SLASH_HELP: readonly string[] = [
   '  /pyramid <slot> [x y] [nested] — 단일 컵 pick→place · slot: 1l 1m 1r 2l 2r 3m · nested 기본 1',
   '  /unstack <slot> <x y> [nested] — slot 컵을 (x,y)에 nested 컬럼으로 (역피라미드)',
   '  /scan [line|square] — 2방향 라인 / 4방향 사각형 스캔',
-  '  /move home — 로봇을 HOME(park) 위치로 이동 (0.611, -0.237, 0.468)',
+  '  /move home — 로봇을 HOME(park) 위치로 이동 (0.244, -0.012, 0.515)',
   '  /fallen state — 넘어진 컵 인식 상태 조회',
   '  /fallen detect [start|stop] — 넘어진 컵 YOLO 인식 서비스 on/off',
   '  /fallen recovery [drop|place] [--single] [--dry] [--sim] — 넘어진 컵 세우기',
@@ -318,7 +318,7 @@ export default function App() {
         addLog('WARN', 'usage: /move home');
         return;
       }
-      const HOME = { x: 0.611, y: -0.237, z: 0.468 };
+      const HOME = { x: 0.244, y: -0.012, z: 0.515 };
       addLog('INFO', `move → HOME (${HOME.x}, ${HOME.y}, ${HOME.z})`);
       try {
         const r = await moveRobot(HOME.x, HOME.y, HOME.z, 'absolute');
