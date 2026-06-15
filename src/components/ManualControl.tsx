@@ -33,7 +33,7 @@ const LARGE_MOVE_MM = 50;
 // singularity the Doosan controller rejects. This sits in front of the robot,
 // near the live EE (~0.50, 0.04, 0.43), well inside the server AABB
 // (x/y ∈ [-0.5,0.5], z ∈ [0.25,0.55]) so it stays reachable.
-const HOME_POSE = { x: 0.611, y: -0.237, z: 0.468 } as const;
+const HOME_POSE = { x: 0.244, y: -0.012, z: 0.515 } as const;
 
 function fmtM(v: number) { return v.toFixed(3); }
 function fmtDelta(d: number) {
